@@ -29,6 +29,16 @@ const ORIGINAL_CWD = process.cwd();
 // This ensures templates can be found even when tests change process.cwd()
 const path = require('path');
 const fs = require('fs');
+const {
+  isPreserveFabrixTestEnv
+} = require('./helpers/aifabrix-runtime-sandbox');
+const {
+  backupAifabrixRuntimeDir,
+  restoreAifabrixRuntimeDir
+} = require('./helpers/aifabrix-runtime-backup');
+
+/** @type {{ backupDir: string|null, files: string[] }|null} */
+let preserveEnvBackup = null;
 let PROJECT_ROOT = null;
 
 // Try to find project root by looking for package.json
@@ -56,6 +66,13 @@ PROJECT_ROOT = path.resolve(PROJECT_ROOT);
 
 // Set in global scope
 global.PROJECT_ROOT = PROJECT_ROOT;
+
+if (isPreserveFabrixTestEnv()) {
+  const configPath = process.env.AIFABRIX_CONFIG;
+  if (configPath && fs.existsSync(configPath)) {
+    preserveEnvBackup = backupAifabrixRuntimeDir(path.dirname(configPath));
+  }
+}
 
 // PERMANENT FIX: Add global guard to prevent writes to real template files
 // This guard is active for ALL tests and prevents ANY writes to templates directory
@@ -327,6 +344,10 @@ afterEach(() => {
 // Cleanup after all tests
 afterAll(() => {
   global.testUtils.cleanupTempFiles();
+  if (preserveEnvBackup && process.env.AIFABRIX_CONFIG) {
+    restoreAifabrixRuntimeDir(path.dirname(process.env.AIFABRIX_CONFIG), preserveEnvBackup);
+    preserveEnvBackup = null;
+  }
   // Ensure final CWD is valid for coverage reporters
   try {
     process.chdir(ORIGINAL_CWD);

@@ -11,8 +11,17 @@
 jest.mock('inquirer');
 jest.mock('../../../lib/utils/logger');
 jest.mock('../../../lib/core/config', () => ({
-  getAdminEmail: jest.fn().mockResolvedValue('')
+  getAdminEmail: jest.fn().mockResolvedValue(''),
+  getSetupInstallationProfile: jest.fn().mockResolvedValue('dev'),
+  setSetupInstallationProfile: jest.fn().mockResolvedValue('dev')
 }));
+jest.mock('../../../lib/commands/setup-prompts-admin', () => {
+  const actual = jest.requireActual('../../../lib/commands/setup-prompts-admin');
+  return {
+    ...actual,
+    promptAdminCredentialsWithProfile: jest.fn()
+  };
+});
 jest.mock('../../../lib/core/secrets');
 jest.mock('../../../lib/core/secrets-ensure', () => ({
   setSecretInStore: jest.fn().mockResolvedValue(undefined)
@@ -24,6 +33,7 @@ const config = require('../../../lib/core/config');
 const secretsCore = require('../../../lib/core/secrets');
 const secretsEnsure = require('../../../lib/core/secrets-ensure');
 
+const adminPrompts = require('../../../lib/commands/setup-prompts-admin');
 const {
   MODE,
   AI_KEYS,
@@ -31,7 +41,9 @@ const {
   confirmDestructiveMode,
   promptAdminCredentials,
   promptAiTool,
-  detectAiToolStatus
+  detectAiToolStatus,
+  validateEmail,
+  validatePassword
 } = require('../../../lib/commands/setup-prompts');
 
 describe('lib/commands/setup-prompts', () => {
@@ -48,8 +60,8 @@ describe('lib/commands/setup-prompts', () => {
     it('exposes stable mode identifiers', () => {
       expect(MODE.REINSTALL).toBe('reinstall');
       expect(MODE.WIPE_DATA).toBe('wipe-data');
-      expect(MODE.CLEAN_FILES).toBe('clean-files');
       expect(MODE.UPDATE_IMAGES).toBe('update-images');
+      expect(MODE.CLEAN_FILES).toBeUndefined();
     });
 
     it('exposes the canonical AI key names', () => {
@@ -64,6 +76,18 @@ describe('lib/commands/setup-prompts', () => {
       inquirer.prompt.mockResolvedValue({ mode: 'wipe-data' });
       await expect(promptModeSelection()).resolves.toBe('wipe-data');
     });
+
+    it('offers exactly three setup modes (no clean-files)', async() => {
+      inquirer.prompt.mockResolvedValue({ mode: 'update-images' });
+      await promptModeSelection();
+      expect(inquirer.prompt).toHaveBeenCalledTimes(1);
+      const questions = inquirer.prompt.mock.calls[0][0];
+      const { choices } = questions[0];
+      expect(choices).toHaveLength(3);
+      const values = choices.map((c) => c.value);
+      expect(values).toEqual(['reinstall', 'wipe-data', 'update-images']);
+      expect(values).not.toContain('clean-files');
+    });
   });
 
   describe('confirmDestructiveMode', () => {
@@ -73,7 +97,7 @@ describe('lib/commands/setup-prompts', () => {
     });
 
     it('returns true without prompting for non-destructive modes', async() => {
-      await expect(confirmDestructiveMode('clean-files', false)).resolves.toBe(true);
+      await expect(confirmDestructiveMode('update-images', false)).resolves.toBe(true);
       expect(inquirer.prompt).not.toHaveBeenCalled();
     });
 
@@ -89,57 +113,25 @@ describe('lib/commands/setup-prompts', () => {
   });
 
   describe('promptAdminCredentials', () => {
-    it('returns trimmed email and verbatim password', async() => {
-      inquirer.prompt.mockResolvedValue({
-        adminEmail: '  admin@example.com ',
-        adminPassword: 'changeme1',
-        adminPasswordConfirm: 'changeme1'
+    it('maps dev bundle to adminEmail and legacy adminPassword', async() => {
+      adminPrompts.promptAdminCredentialsWithProfile.mockResolvedValue({
+        adminEmail: 'admin@example.com',
+        passwordBundle: { mode: 'single', password: 'changeme1' },
+        profile: 'dev'
       });
       const result = await promptAdminCredentials();
-      expect(result).toEqual({
-        adminEmail: 'admin@example.com',
-        adminPassword: 'changeme1'
-      });
+      expect(result.adminEmail).toBe('admin@example.com');
+      expect(result.adminPassword).toBe('changeme1');
+      expect(result.passwordBundle.mode).toBe('single');
     });
+  });
 
-    it('prefills admin email default from config when present', async() => {
-      config.getAdminEmail.mockResolvedValue('saved@example.com');
-      let captured;
-      inquirer.prompt.mockImplementation(async(questions) => {
-        captured = questions;
-        return {
-          adminEmail: 'saved@example.com',
-          adminPassword: 'changeme1',
-          adminPasswordConfirm: 'changeme1'
-        };
-      });
-      await promptAdminCredentials();
-      expect(captured[0].default).toBe('saved@example.com');
-    });
-
-    it('rejects empty / malformed email and short / mismatched password through inquirer validators', async() => {
-      let captured;
-      inquirer.prompt.mockImplementation(async(questions) => {
-        captured = questions;
-        return {
-          adminEmail: 'admin@example.com',
-          adminPassword: 'changeme1',
-          adminPasswordConfirm: 'changeme1'
-        };
-      });
-      await promptAdminCredentials();
-
-      const [emailQ, pwQ, confirmQ] = captured;
-      expect(emailQ.validate('')).toMatch(/required/);
-      expect(emailQ.validate('not-an-email')).toMatch(/valid email/);
-      expect(emailQ.validate('a@b.c')).toBe(true);
-
-      expect(pwQ.validate('')).toMatch(/required/);
-      expect(pwQ.validate('short')).toMatch(/at least 8/);
-      expect(pwQ.validate('longenough')).toBe(true);
-
-      expect(confirmQ.validate('a', { adminPassword: 'b' })).toMatch(/do not match/);
-      expect(confirmQ.validate('same', { adminPassword: 'same' })).toBe(true);
+  describe('validateEmail / validatePassword', () => {
+    it('validates email and password rules', () => {
+      expect(validateEmail('')).toMatch(/required/);
+      expect(validateEmail('a@b.c')).toBe(true);
+      expect(validatePassword('short')).toMatch(/at least 8/);
+      expect(validatePassword('longenough')).toBe(true);
     });
   });
 

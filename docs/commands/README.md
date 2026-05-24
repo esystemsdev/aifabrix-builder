@@ -15,7 +15,7 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix logout`](authentication.md#aifabrix-logout) - Clear stored tokens (optional filter by controller/env/app)
   - [`aifabrix auth`](authentication.md#aifabrix-auth) - Show auth status or set default controller/environment (`auth status` for scripts)
 - [Infrastructure Commands](infrastructure.md) - Local Docker infra and platform (setup, teardown, up-infra, up-platform, up-miso, up-dataplane, down-infra, status, doctor, restart)
-  - [`aifabrix setup`](infrastructure.md#aifabrix-setup) - One-shot installer: fresh-install wizard or mode menu (re-install, wipe data, clean files, update images)
+  - [`aifabrix setup`](infrastructure.md#aifabrix-setup) - One-shot installer: fresh-install wizard or mode menu (re-install, wipe data, update images)
   - [`aifabrix teardown`](infrastructure.md#aifabrix-teardown) - down-infra -v + clean ~/.aifabrix/ except config.yaml
   - [`aifabrix up-infra`](infrastructure.md#aifabrix-up-infra) - Start Postgres, Redis; optional pgAdmin, Redis Commander, Traefik
   - [`aifabrix up-platform`](infrastructure.md#aifabrix-up-platform) - Start Keycloak, Miso Controller, dataplane from images (needs up-infra)

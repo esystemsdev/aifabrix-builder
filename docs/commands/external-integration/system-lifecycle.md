@@ -90,7 +90,7 @@ aifabrix upload my-hubspot --force
 - `--probe` – After publish, run runtime checks for all datasources
 - `--probe-timeout <ms>` – Timeout for `--probe`
 - `--minimal` – Print a short readiness summary only
-- `--force` – Bypass schema replacement guards on **active** datasources (shows an extra warning; prefer archive + re-upload when replacing dimension keys on an inactive system)
+- `--force` – Bypass schema replacement guards on **active** datasources and refresh the linked template credential from the secret store (shows an extra warning; prefer archive + re-upload when replacing dimension keys on an inactive system). Use after `secret set` / `repair --auth apikey` when E2E credential tests still see stale tokens.
 
 ---
 

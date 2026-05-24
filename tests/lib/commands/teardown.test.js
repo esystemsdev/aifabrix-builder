@@ -30,6 +30,7 @@ jest.mock('ora', () => {
 });
 
 const fs = require('fs');
+const path = require('path');
 const inquirer = require('inquirer');
 const infra = require('../../../lib/infrastructure');
 const config = require('../../../lib/core/config');
@@ -39,6 +40,7 @@ const logger = require('../../../lib/utils/logger');
 const {
   handleTeardown,
   cleanAifabrixSystemDir,
+  cleanMaterializedBuilderTrees,
   PRESERVE_FILE,
   PRESERVE_CERTS_DIR
 } = require('../../../lib/commands/teardown');
@@ -48,6 +50,7 @@ describe('lib/commands/teardown', () => {
     jest.clearAllMocks();
     logger.log = jest.fn();
     pathsUtil.getAifabrixSystemDir = jest.fn().mockReturnValue('/home/test/.aifabrix');
+    pathsUtil.getBuilderRoot = jest.fn().mockReturnValue('/home/test/.aifabrix/builder');
     infra.stopInfraWithVolumes = jest.fn().mockResolvedValue(undefined);
     fs.existsSync = jest.fn().mockReturnValue(true);
     fs.readdirSync = jest.fn().mockReturnValue([]);
@@ -105,6 +108,25 @@ describe('lib/commands/teardown', () => {
 
     it('exposes the preserved certs directory constant', () => {
       expect(PRESERVE_CERTS_DIR).toBe('certs');
+    });
+  });
+
+  describe('cleanMaterializedBuilderTrees', () => {
+    it('removes builder roots under config dir, materialization parent, and cwd', () => {
+      pathsUtil.getBuilderRoot.mockReturnValue('/workspace/.aifabrix/builder');
+      pathsUtil.getAifabrixSystemDir.mockReturnValue('/workspace/.aifabrix');
+      const cwdBuilder = path.join(process.cwd(), 'builder');
+      fs.existsSync.mockImplementation((p) => {
+        const s = String(p);
+        return s === '/workspace/.aifabrix/builder' || s === cwdBuilder;
+      });
+      const { removed, failed } = cleanMaterializedBuilderTrees();
+      expect(removed).toContain('/workspace/.aifabrix/builder');
+      expect(failed).toEqual([]);
+      expect(fs.rmSync).toHaveBeenCalledWith(
+        '/workspace/.aifabrix/builder',
+        expect.objectContaining({ recursive: true, force: true })
+      );
     });
   });
 

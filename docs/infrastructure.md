@@ -6,19 +6,86 @@
 
 ---
 
+## Install the platform (one command)
+
+You do not need a checklist of ten commands. Install the full local platform like this:
+
+```bash
+npm install -g @aifabrix/builder
+aifabrix setup
+```
+
+**What you get:** shared infra (Postgres, Redis, optional pgAdmin and Redis Commander), then Keycloak, Miso Controller, and Dataplane containers. Setup runs `up-infra` and `up-platform` for you.
+
+**Images:** Every setup path (fresh install and all three mode-menu choices) runs `docker compose pull` / `docker pull` for infra and platform apps before services restart.
+
+**First run:** Image pulls and container startup typically take a few minutes. Watch the terminal until setup reports success.
+
+**Sign in:** Platform UI username **`admin`**. Password is the one you entered in setup (dev profile) or the **platform** password from the pro profile summary (see below). Setup writes **`platform-controller`** and **`controller`** in `config.yaml` to the same absolute Miso URL. If you already have a device token for that URL, setup keeps your login; otherwise it runs the device login step during platform bring-up.
+
+**Tear down everything:** `aifabrix teardown` (removes volumes, cleans the config directory except `config.yaml` and `certs/`, and removes materialized `builder/` under your work tree).
+
+→ Command reference: [aifabrix setup](commands/infrastructure.md#aifabrix-setup) · [aifabrix teardown](commands/infrastructure.md#aifabrix-teardown)
+
+---
+
+## Dev and pro installation profiles
+
+The builder uses **dev** and **pro** in many places (for example login environment **dev** / **tst** / **pro**). During **setup**, the same words describe **how you install on this machine**:
+
+| Profile | Also called | Use when | Admin email | Admin passwords |
+| --- | --- | --- | --- | --- |
+| **dev** | development installation | Local development, training, labs (default) | You enter once in the wizard | **One password** — same value for Postgres, pgAdmin, Redis Commander, Keycloak install, and platform UI login |
+| **pro** | production installation | Production-style or hardened local install | Same email prompt | **Autogenerate** three strong passwords (printed **once**) **or** enter manually (one password for all roles, or separate passwords in advanced mode) |
+
+**Default:** `aifabrix setup` without extra flags uses the **dev** profile.
+
+**Choose pro** in the setup wizard, or non-interactively:
+
+```bash
+aifabrix setup --installation pro --pro-password-mode autogen
+aifabrix setup --installation pro --pro-password-mode manual
+```
+
+`--pro-password-mode manual` accepts one password for all admin roles, or separate passwords via `aifabrix up-infra --infraAdminPassword`, `--keycloakAdminPassword`, and `--platformAdminPassword`.
+
+### Where credentials live
+
+| File | Purpose |
+| --- | --- |
+| `~/.aifabrix/admin-secrets.env` | All **admin** passwords (infra DB, pgAdmin, Redis Commander, Keycloak install, platform login). Encrypted with `secure://` when you set a secrets encryption key in `config.yaml`. |
+| `~/.aifabrix/secrets.local.yaml` | App and integration secrets (API keys, DB URLs per app, etc.) — not admin passwords. |
+| `~/.aifabrix/config.yaml` | Developer ID, infra toggles, saved `setupInstallationProfile` (`dev` or `pro`), optional `adminEmail`, **`platform-controller`** (absolute Miso URL written by setup), **`controller`** (aligned with login). |
+
+**Pro autogenerate — save the screen:** When you pick autogenerate, the CLI prints infra, Keycloak, and platform passwords **once**. Copy them to a password manager immediately; they are not shown again and are not stored in plaintext on disk.
+
+**AI tool keys:** Setup can prompt for OpenAI or Azure OpenAI if keys are missing. You can also set them before or after setup with `aifabrix secret set` (see [README](../README.md)).
+
+**When infra is already up**, `aifabrix setup` shows a **three-option** menu (the old “refresh platform config only” choice was removed):
+
+| Mode | Data | Typical use |
+| --- | --- | --- |
+| **Re-install** | Deletes all Docker volumes | Broken volumes or full reset |
+| **Wipe data** | Drops DBs/users; keeps Postgres volume | Empty databases without destroying volumes |
+| **Update images** | Keeps volumes, secrets, and builder trees | Pull newer Keycloak / Miso / Dataplane images |
+
+All three pull images, then run `up-infra` and `up-platform`. Re-install re-prompts for admin email/password; wipe data and update images use existing `admin-secrets.env`.
+
+---
+
 ## Local Infrastructure Overview
 
 When you run `aifabrix up-infra`, you get shared baseline services for local development:
 
 | Service | Port | Required | Description |
-|---------|------|----------|-------------|
+| ------- | ---- | -------- | ----------- |
 | PostgreSQL | 5432 | Always | Database server (includes pgvector). Access: localhost:5432 |
 | Redis | 6379 | Always | In-memory cache, sessions, queues. Access: localhost:6379 |
-| pgAdmin | 5050 | Optional | Web UI for database management. Access: http://localhost:5050 |
-| Redis Commander | 8081 | Optional | Web UI for Redis. Access: http://localhost:8081 |
+| pgAdmin | 5050 | Optional | Web UI for database management. Access: <http://localhost:5050> |
+| Redis Commander | 8081 | Optional | Web UI for Redis. Access: <http://localhost:8081> |
 | Traefik | 80/443 | Optional | Reverse proxy for local routing |
 
-**Default credentials:** Postgres user `pgadmin`, pgAdmin login and passwords come from the builder **infra parameter catalog** `defaults` in `infra.parameter.yaml` (shipped: `admin@aifabrix.dev` / `admin123` for admin flows, `user123` for Keycloak default-user literals). Redis Commander uses the same admin password as Postgres. Override on one run with `aifabrix up-infra --adminPassword … --adminEmail … --userPassword …`.
+**Credentials:** Come from `admin-secrets.env` after setup (not hardcoded in docs). On a fresh catalog-only run, defaults in the infra parameter catalog may apply until you run setup; prefer **`aifabrix setup`** so dev or pro profile writes your chosen values. Override one run with `aifabrix up-infra --adminPassword … --adminEmail …`.
 
 ---
 
@@ -34,6 +101,8 @@ aifabrix up-infra
 aifabrix up-infra --pgAdmin --redisAdmin --traefik
 ```
 
+**Recommended for new developers:** use `aifabrix setup` instead of calling `up-infra` and `up-platform` separately.
+
 **First time?** Docker downloads images (2–3 minutes). You’ll see containers starting and health checks passing.
 
 ---
@@ -41,7 +110,7 @@ aifabrix up-infra --pgAdmin --redisAdmin --traefik
 ## up-infra Options
 
 | Option | Description |
-|--------|-------------|
+| ------ | ----------- |
 | `--pgAdmin` | Include pgAdmin web UI and save to config |
 | `--no-pgAdmin` | Exclude pgAdmin and save to config |
 | `--redisAdmin` | Include Redis Commander web UI and save to config |
@@ -50,7 +119,8 @@ aifabrix up-infra --pgAdmin --redisAdmin --traefik
 | `--no-traefik` | Exclude Traefik and save to config |
 | `--tls` | Save TLS mode on; `${TLS_ENABLED}` → `true`, `${HTTP_ENABLED}` → `false` in deployment JSON |
 | `--no-tls` | Save TLS mode off; `${TLS_ENABLED}` → `false`, `${HTTP_ENABLED}` → `true` (cannot combine with `--tls`) |
-| `--adminPassword <password>` | Override default admin password (Postgres, pgAdmin, Redis Commander) |
+| `--adminPassword <password>` | Override admin password (dev profile: all admin roles; pro profile: use role-specific flags when available) |
+| `--adminEmail <email>` | Override admin email |
 | `-d, --developer <id>` | Use developer-specific ports and network |
 
 Settings are stored in `~/.aifabrix/config.yaml`. When flags are omitted, saved values are used (pgAdmin and Redis Commander default to enabled).
@@ -69,21 +139,21 @@ aifabrix up-infra --pgAdmin --redisAdmin --traefik
 ### PostgreSQL (always on)
 - **Access:** localhost:5432
 - **Username:** pgadmin
-- **Password:** from admin-secrets (catalog default on first run; see `defaults.adminPassword` in `infra.parameter.yaml`)
+- **Password:** from `admin-secrets.env` (set by setup)
 
 ### Redis (always on)
 - **Access:** localhost:6379
 
 ### pgAdmin (optional)
-- **Access:** http://localhost:5050 (port 5050 for dev 0; add 100 per developer ID)
-- **Login:** values from catalog `defaults.adminEmail` / `defaults.adminPassword` (or `--adminEmail` / `--adminPassword` on `up-infra`)
+- **Access:** <http://localhost:5050> (port 5050 for dev 0; add 100 per developer ID)
+- **Login:** email and password from `admin-secrets.env`
 
 ### Redis Commander (optional)
-- **Access:** http://localhost:8081 (port 8081 for dev 0; add 100 per developer ID)
-- **Login:** admin / same password as Postgres (catalog default or `--adminPassword`)
+- **Access:** <http://localhost:8081> (port 8081 for dev 0; add 100 per developer ID)
+- **Login:** admin user / password from `admin-secrets.env`
 
 ### Traefik (optional)
-- **Access:** http://localhost:80, https://localhost:443
+- **Access:** <http://localhost:80>, <https://localhost:443>
 - **TLS:** Set `TRAEFIK_CERT_STORE`, `TRAEFIK_CERT_FILE`, `TRAEFIK_KEY_FILE` before `aifabrix up-infra --traefik`
 
 ---
@@ -132,8 +202,10 @@ Full platform in one step: `up-miso` then `up-dataplane`.
 aifabrix up-platform
 ```
 
+**One-shot install:** `aifabrix setup` runs fresh install or a three-option menu (re-install, wipe data, update images), pulls Docker images in every path, and stores **`platform-controller`** in config. See [Infrastructure Commands — aifabrix setup](commands/infrastructure.md#aifabrix-setup).
+
 ### up-dataplane
-Register/rotate, deploy to controller, then run dataplane locally in dev. Requires `aifabrix login` and environment `dev`.
+Register/rotate, deploy to controller, then run dataplane locally in the **dev** runtime environment. Requires `aifabrix login` first.
 ```bash
 aifabrix login --environment dev
 aifabrix up-dataplane
@@ -153,7 +225,6 @@ aifabrix create keycloak --port 8082 --database --template keycloak
 aifabrix build keycloak
 aifabrix run keycloak
 ```
-Access: http://localhost:8082 (admin / admin123)
 
 **Miso Controller:**
 ```bash
@@ -161,7 +232,8 @@ aifabrix create miso-controller --port 3000 --database --redis --template miso-c
 aifabrix build miso-controller
 aifabrix run miso-controller
 ```
-Access: http://localhost:3000
+
+Use the admin password from your setup wizard when signing in to custom template instances.
 
 ---
 
@@ -180,19 +252,25 @@ Only when developing. Use `aifabrix up-infra` when you start, `aifabrix down-inf
 It’s preserved in Docker volumes. Databases and Redis data persist between restarts.
 
 **Can I use my own Postgres/Redis?**  
-Yes. Configure connection strings in your app’s `env.template`.
+Technically yes (connection strings in an app’s `env.template`), but **not recommended** for local setup. `aifabrix setup` / `up-infra` provision Postgres and Redis on a shared Docker network with fixed service names and ports that platform apps expect. Pointing apps at external databases breaks that contract unless you replicate networking and naming yourself. For managed infrastructure and an **ISO 27001–ready** install path, use **Azure Marketplace** deployment instead of mixing external databases with the local Docker installer.
 
 **How much disk space?**  
 Base infra: ~0.5–1.5 GB for images; ~256 MB–1 GB RAM when running (more if pgAdmin, Redis Commander, or Traefik are enabled).
+
+**Dev vs pro setup vs dev/tst/pro login environment?**  
+Setup **dev/pro** = installation profile on your machine. Login **`--environment dev|tst|pro`** = which controller/dataplane target you use after install. Same words, different step in the workflow.
 
 ---
 
 ## Troubleshooting
 
 | Issue | Action |
-|-------|--------|
+| ----- | ------ |
 | Port 5432 already in use | Stop other Postgres or use `--developer` for different ports |
 | Port 6379 already in use | Stop other Redis |
-| Docker not running | Start Docker Desktop, then run `aifabrix up-infra` again |
+| Docker not running | Start Docker Desktop, then run `aifabrix setup` or `aifabrix up-infra` again |
 | Cannot connect to Docker daemon | Ensure Docker Desktop is running and you’re logged in |
 | Containers start but apps can’t connect | Run `aifabrix doctor` to check connectivity |
+| UI login fails after password change | Re-run setup **re-install** mode or `down-infra -v` then `aifabrix setup` so DB volume matches `admin-secrets.env` |
+| Wrong controller / CLI cannot reach Miso | Check **`platform-controller`** in `config.yaml` or the **Platform Ready** footer; run `aifabrix login` against that URL, or **update images** mode |
+| Lost pro autogenerated passwords | They are only shown once; re-run setup re-install with pro autogen or set passwords via `up-infra` role flags when supported |

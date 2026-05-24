@@ -463,7 +463,9 @@ describe('secret set command', () => {
       });
 
       it('uses primary user path from paths, not os.homedir()', async() => {
-        const workspacePath = '/workspace/.aifabrix/secrets.local.yaml';
+        const osActual = jest.requireActual('os');
+        const customRoot = path.join(osActual.tmpdir(), 'aifx-primary-user-secrets');
+        const workspacePath = path.join(customRoot, 'secrets.local.yaml');
         pathsUtil.getPrimaryUserSecretsLocalPath.mockReturnValue(workspacePath);
 
         const key = 'test-keyKeyVault';

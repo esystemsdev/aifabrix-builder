@@ -186,6 +186,25 @@ describe('run-env-compose', () => {
       expect(dbInitCall).toHaveProperty('POSTGRES_PASSWORD', 'overridden');
     });
 
+    it('admin-secrets platform keys win over app kv in merged run env', async() => {
+      adminSecrets.readAndDecryptAdminSecrets.mockResolvedValueOnce({
+        POSTGRES_PASSWORD: 'admin',
+        KEYCLOAK_ADMIN_PASSWORD: 'from-admin-file',
+        PLATFORM_ADMIN_PASSWORD: 'ui-from-file'
+      });
+      secretsEnvWrite.resolveAndGetEnvMap.mockResolvedValueOnce({
+        KEYCLOAK_ADMIN_PASSWORD: 'from-kv',
+        ONBOARDING_ADMIN_PASSWORD: 'from-kv',
+        DB_0_PASSWORD: 'appdb',
+        PORT: '3000'
+      });
+      await runEnvCompose.buildMergedRunEnvAndWrite('miso-controller', {}, '/tmp/apps');
+      const appOnlyCall = adminSecrets.envObjectToContent.mock.calls[0][0];
+      expect(appOnlyCall.KEYCLOAK_ADMIN_PASSWORD).toBe('from-admin-file');
+      expect(appOnlyCall.ONBOARDING_ADMIN_PASSWORD).toBe('ui-from-file');
+      expect(appOnlyCall.DB_0_PASSWORD).toBe('appdb');
+    });
+
     it('passes through KC_DB_* vars (KC_DB_URL_HOST, KC_DB_URL_PORT, KC_DB_URL_DATABASE, KC_DB_USERNAME, KC_DB_PASSWORD) in app-only file', async() => {
       secretsEnvWrite.resolveAndGetEnvMap.mockResolvedValueOnce({
         KC_DB_URL_HOST: 'postgres',

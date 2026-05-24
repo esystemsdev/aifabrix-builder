@@ -23,12 +23,12 @@ Open developer runtime for AI Fabrix ecosystem. Install the AI Fabrix platform a
 ## Prerequisites
 
 - **Node.js 18+** – Recommended for running the CLI.
-- **AI Fabrix Azure / platform:** Install from **Azure Marketplace** or run via **Docker** (e.g. `aifabrix up-platform`). You need **full access to Docker** (docker commands) where applicable.
-- **Secrets before platform:** Add secrets (e.g. OpenAI or Azure OpenAI) **before** running `aifabrix up-platform`; the platform reads them from the place you configure. See [Infrastructure](docs/infrastructure.md) and secrets configuration.
+- **Docker Desktop** – Full access to Docker (containers for infra and platform).
+- **Secrets before platform:** Add an AI tool key (OpenAI or Azure OpenAI) in setup or with `aifabrix secret set` **before** the platform needs them. See [Infrastructure](docs/infrastructure.md).
 
 ---
 
-## Install
+## Install the CLI
 
 ```bash
 npm install -g @aifabrix/builder
@@ -38,33 +38,59 @@ npm install -g @aifabrix/builder
 
 ---
 
-## Goal 1: Start and test the AI Fabrix platform
+## Goal 1: Install the platform (one command)
 
-Get the platform running locally so you can try it.
-
-**One-shot install:**
+Get Postgres, Redis, Keycloak, Miso Controller, and Dataplane running on your machine.
 
 ```bash
 aifabrix setup
 ```
 
-`aifabrix setup` detects your local state and either runs a fresh-install wizard (admin email/password, optional AI tool keys) or shows a mode menu (re-install, wipe data, clean files, update images). It then runs `up-infra` and `up-platform` for you. Use `aifabrix teardown` to fully remove the local installation. See [Infrastructure commands](docs/commands/infrastructure.md#aifabrix-setup) for details and CI flags.
+That is the whole story for most developers. The command detects whether infra is already running:
 
-If you prefer to set the AI tool key outside the wizard, use one of:
+| Situation | What happens |
+| --- | --- |
+| **Fresh machine** | Short wizard → pull images → `up-infra` → `up-platform` |
+| **Already installed** | Mode menu (3 choices): **re-install** (destroys volumes), **wipe data** (DBs only), or **update images** (keeps data) — each path pulls fresh Docker images before restart |
 
-- **OpenAI:** set your API key:
+**Grab a coffee** — setup pulls infrastructure and platform images (a few minutes on first run or after image updates). When setup finishes, the CLI stores **`platform-controller`** in `config.yaml` (absolute Miso URL for your machine). Sign in with username **`admin`** and your admin password. If you were already logged in to that controller URL, setup keeps your session; otherwise it prompts for device login like a fresh install.
+
+**Controller URL:** Local Docker without Traefik uses `http://localhost:` + port `3000 + developerId×100`. With Traefik and `remote-server`, use the public URL shown in the **Platform Ready** footer (path `/miso/*`). See [Infrastructure guide](docs/infrastructure.md#install-the-platform-one-command).
+
+→ Step-by-step detail, ports, and **dev / pro** installation profiles: **[Infrastructure guide](docs/infrastructure.md#install-the-platform-one-command)**
+
+### Dev vs pro installation (setup profile)
+
+These names match how we talk about **environments** elsewhere (**dev**, **tst**, **pro**). Here they mean **how you install locally**, not which cloud environment you deploy to later.
+
+| Profile | Best for | Admin email | Admin passwords |
+| --- | --- | --- | --- |
+| **dev** (default) | Local development, training, labs | You enter once | **One password** for Postgres, pgAdmin, Keycloak, and platform login |
+| **pro** | Production-style or hardened installs | Same | **Autogenerate** strong passwords (shown once) **or** enter manually |
+
+**Default:** **dev** (one email, one password). **Pro** is available in the setup wizard or non-interactively:
+
+```bash
+aifabrix setup --installation pro --pro-password-mode autogen
+```
+
+Use `--pro-password-mode manual` to enter passwords yourself (one password for all roles, or separate infra / Keycloak / platform passwords via `up-infra` flags).
+
+Admin credentials are stored in **`~/.aifabrix/admin-secrets.env`** (encrypted when you configure a secrets encryption key). App and integration secrets stay in **`~/.aifabrix/secrets.local.yaml`**.
+
+### Optional: set AI keys outside the wizard
+
+- **OpenAI:**
   ```bash
   aifabrix secret set secrets-openaiApiKeyVault <your-openai-secret-key>
   ```
-- **Azure OpenAI:** set endpoint and API key:
+- **Azure OpenAI:**
   ```bash
   aifabrix secret set azure-openaiapi-urlKeyVault <your-azure-openai-endpoint-url>
   aifabrix secret set secrets-azureOpenaiApiKeyVault <your-azure-openai-secret-key>
   ```
 
-Secrets are stored in `~/.aifabrix/secrets.local.yaml` or the file from `aifabrix-secrets` in your config (e.g. `builder/secrets.local.yaml`).
-
-→ [Infrastructure guide](docs/infrastructure.md)
+Remove the platform completely: `aifabrix teardown`. Command details: [Infrastructure commands](docs/commands/infrastructure.md#aifabrix-setup).
 
 ---
 
@@ -72,7 +98,7 @@ Secrets are stored in `~/.aifabrix/secrets.local.yaml` or the file from `aifabri
 
 Create and deploy an external system (e.g. HubSpot): wizard or manual setup, then validate and deploy.
 
-**Example: HubSpot**
+**Example: HubSpot:**
 
 - Create: `aifabrix create hubspot-test` (external is the default; or `aifabrix wizard` for guided setup). For a web app use `aifabrix create my-app --type webapp`.
 - Configure auth and datasources under `integration/hubspot-test/`.
@@ -96,7 +122,7 @@ Create, configure, and run your own AI Fabrix application locally or deploy it (
 All guides and references are listed in **[docs/README.md](docs/README.md)** (table of contents).
 
 - [CLI Commands Reference](docs/commands/README.md) – All commands
-- [Infrastructure](docs/infrastructure.md) – What runs and why
+- [Infrastructure](docs/infrastructure.md) – Install the platform, services, dev/pro setup
 - [Configuration reference](docs/configuration/README.md) – Config files (deployment key, application.yaml, env.template, secrets)
 
 ---
@@ -111,6 +137,6 @@ All guides and references are listed in **[docs/README.md](docs/README.md)** (ta
 
 ## License
 
-© eSystems Nordic Ltd 2025 - All Rights Reserved
+© eSystems Nordic Ltd 2026 - All Rights Reserved
 
 `@aifabrix/builder` is part of the AI Fabrix platform.

@@ -17,7 +17,6 @@ jest.mock('../../../lib/commands/setup-prompts', () => ({
   MODE: {
     REINSTALL: 'reinstall',
     WIPE_DATA: 'wipe-data',
-    CLEAN_FILES: 'clean-files',
     UPDATE_IMAGES: 'update-images'
   },
   AI_KEYS: {
@@ -92,12 +91,6 @@ describe('lib/commands/setup', () => {
       expect(modes.runWipeData).toHaveBeenCalled();
     });
 
-    it('dispatches CLEAN_FILES to runCleanInstallFiles', async() => {
-      modes.runCleanInstallFiles.mockResolvedValue(undefined);
-      await dispatchMode('clean-files');
-      expect(modes.runCleanInstallFiles).toHaveBeenCalled();
-    });
-
     it('dispatches UPDATE_IMAGES to runUpdateImages', async() => {
       modes.runUpdateImages.mockResolvedValue(undefined);
       await dispatchMode('update-images');
@@ -106,6 +99,11 @@ describe('lib/commands/setup', () => {
 
     it('throws on unknown mode', async() => {
       await expect(dispatchMode('bogus')).rejects.toThrow(/Unknown setup mode/);
+    });
+
+    it('throws on removed clean-files mode', async() => {
+      await expect(dispatchMode('clean-files')).rejects.toThrow(/Unknown setup mode/);
+      expect(modes.runCleanInstallFiles).toBeUndefined();
     });
   });
 
@@ -145,8 +143,8 @@ describe('lib/commands/setup', () => {
 
     it('ignores --developer when infra is already running', async() => {
       infra.getInfraStatus.mockResolvedValue({ postgres: { status: 'running' } });
-      prompts.promptModeSelection.mockResolvedValue('clean-files');
-      modes.runCleanInstallFiles.mockResolvedValue(undefined);
+      prompts.promptModeSelection.mockResolvedValue('update-images');
+      modes.runUpdateImages.mockResolvedValue(undefined);
       await handleSetup({ developer: '7' });
       expect(config.setDeveloperId).not.toHaveBeenCalled();
     });
@@ -160,11 +158,11 @@ describe('lib/commands/setup', () => {
     });
 
     it('shows the mode menu and dispatches the chosen mode', async() => {
-      prompts.promptModeSelection.mockResolvedValue('clean-files');
-      modes.runCleanInstallFiles.mockResolvedValue(undefined);
+      prompts.promptModeSelection.mockResolvedValue('update-images');
+      modes.runUpdateImages.mockResolvedValue(undefined);
       await handleSetup({});
       expect(prompts.promptModeSelection).toHaveBeenCalled();
-      expect(modes.runCleanInstallFiles).toHaveBeenCalled();
+      expect(modes.runUpdateImages).toHaveBeenCalled();
     });
 
     it('skips destructive confirmation when --yes is passed', async() => {

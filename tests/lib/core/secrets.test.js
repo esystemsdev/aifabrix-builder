@@ -3199,7 +3199,8 @@ environments:
     });
 
     it('should use getPrimaryUserSecretsLocalPath instead of os.homedir()', async() => {
-      const homeDir = '/workspace/.aifabrix';
+      const osActual = jest.requireActual('os');
+      const homeDir = path.join(osActual.tmpdir(), 'aifx-save-local-secret');
       const userSecretsPath = path.join(homeDir, 'secrets.local.yaml');
       const pathsUtil = require('../../../lib/utils/paths');
       pathsUtil.getAifabrixHome.mockReturnValue(homeDir);
@@ -4033,7 +4034,8 @@ environments:
 
   describe('path resolution consistency between save and load', () => {
     it('should save and load from the same path when aifabrix home is overridden', async() => {
-      const homeDir = '/workspace/.aifabrix';
+      const osActual = jest.requireActual('os');
+      const homeDir = path.join(osActual.tmpdir(), 'aifx-save-load-consistency');
       const userSecretsPath = path.join(homeDir, 'secrets.local.yaml');
       const pathsUtil = require('../../../lib/utils/paths');
       pathsUtil.getAifabrixHome.mockReturnValue(homeDir);

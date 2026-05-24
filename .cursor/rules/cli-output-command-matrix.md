@@ -25,7 +25,7 @@ Third column documents **which on-disk trees** a command is expected to use for 
 | Code | Meaning |
 | ---- | ------- |
 | **141** | Canonical resolver: `cwd/integration/<system>` → `cwd/builder/<app>` → **`(aifabrix-work if set, else aifabrix-home)/builder/<app>`** (resolved **`aifabrix-work`** / **`AIFABRIX_WORK`** first, else **`aifabrix-home`** / **`AIFABRIX_HOME`** / default `~/.aifabrix`, e.g. `/workspace/.aifabrix`) **only** for `keycloak` \| `miso-controller` \| `dataplane`. Emit gray **Manifest:** line when a file is picked (see plan). |
-| **141+** | Same as **141** plus auxiliary reads (e.g. deploy JSON, secrets path). **`aifabrix setup`:** when warning about replacing platform apps, list **absolute** paths for each `keycloak` / `miso-controller` / `dataplane` directory under the detected builder root (see plan 141 § Guided setup — today only `builder/<app>/` is shown). |
+| **141+** | Same as **141** plus auxiliary reads (e.g. deploy JSON, secrets path). **`aifabrix setup`:** when warning about replacing platform apps, list **absolute** paths for each `keycloak` / `miso-controller` / `dataplane` directory under the detected builder root (see plan 141 § Guided setup — today only `builder/<app>/` is shown). **Plan 147:** infra-running menu is **three** modes only (re-install, wipe data, update images); all paths run Docker **image pull** before `up-infra`. Persists **`platform-controller`** in `config.yaml` (absolute Miso URL). **Platform Ready** footer **Miso Controller** line uses `platform-controller` / declarative resolve (not localhost-only default). When a stored **device** token matches that URL, setup **`up-platform --force`** skips clearing device tokens and guided auth may skip redundant login (no “cleared N device token(s)” line). |
 | **int** | Primary path is **integration/** (external system / datasource); plan 141 Tier 1a emphasis. |
 | **cfg** | Config / controller only (`config.yaml`, auth); no app `application.yaml` for primary outcome. |
 | **—** | No application manifest disk discovery on the primary path (or delegate / stdout-only with no manifest UX). |
@@ -36,7 +36,7 @@ Third column documents **which on-disk trees** a command is expected to use for 
 | aifabrix logout | tty-summary | local | cfg |
 | aifabrix auth | tty-summary (`--set-controller [url]`: omit URL to pick from controllers stored under `device` + `controller` in config) | local | cfg |
 | aifabrix auth status | tty-summary (header + token + dataplane block; plan 142.0 adds version subsection — `Dataplane version`, `Min Builder CLI`, `This CLI`, `Compatibility: ✔ OK / Not enforced / ✖ Upgrade required` — and on mismatch the red blocking line + `Next actions:` block. `--validate` exit codes: `0` ok, `1` not authenticated, `3` CLI < dataplane min) | local | cfg |
-| aifabrix setup | tty-summary + stream-logs | local+docker | 141+ |
+| aifabrix setup | tty-summary + stream-logs (3-mode menu when infra up; image pull all paths; **Platform Ready** shows resolved **platform-controller**; session-aware auth — see **141+** plan 147) | local+docker | 141+ |
 | aifabrix teardown | tty-summary + stream-logs | local+docker | cfg |
 | aifabrix up-infra | tty-summary + stream-logs | docker | cfg |
 | aifabrix up-platform | tty-summary + stream-logs | docker | 141+ |

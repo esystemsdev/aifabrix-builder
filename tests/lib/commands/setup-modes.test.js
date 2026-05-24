@@ -23,6 +23,18 @@ jest.mock('../../../lib/commands/up-miso');
 jest.mock('../../../lib/commands/up-dataplane');
 jest.mock('../../../lib/commands/up-common');
 jest.mock('../../../lib/commands/setup-prompts');
+jest.mock('../../../lib/commands/setup-platform-auth', () => ({
+  ensureSetupPlatformAuth: jest.fn().mockResolvedValue({
+    platformControllerUrl: 'http://localhost:3600',
+    skipLoginIfAuthenticated: false,
+    forceSummary: {
+      deviceCleared: 0,
+      clientCleared: 0,
+      defaultControllerUrl: 'http://localhost:3600',
+      environment: 'dev'
+    }
+  })
+}));
 jest.mock('../../../lib/commands/login', () => ({
   handleLogin: jest.fn().mockResolvedValue(undefined)
 }));
@@ -56,6 +68,7 @@ const upMiso = require('../../../lib/commands/up-miso');
 const upDataplane = require('../../../lib/commands/up-dataplane');
 const upCommon = require('../../../lib/commands/up-common');
 const prompts = require('../../../lib/commands/setup-prompts');
+const setupPlatformAuth = require('../../../lib/commands/setup-platform-auth');
 const login = require('../../../lib/commands/login');
 const infraGuided = require('../../../lib/cli/infra-guided');
 
@@ -76,10 +89,12 @@ describe('lib/commands/setup-modes', () => {
     config.getDeveloperId = jest.fn().mockResolvedValue('02');
     infra.startInfra = jest.fn().mockResolvedValue(undefined);
     infra.stopInfraWithVolumes = jest.fn().mockResolvedValue(undefined);
+    infra.removeAppVolumes = jest.fn().mockResolvedValue(undefined);
     upMiso.handleUpMiso = jest.fn().mockResolvedValue(undefined);
     upDataplane.handleUpDataplane = jest.fn().mockResolvedValue(undefined);
     upCommon.applyUpPlatformForceConfig = jest.fn().mockResolvedValue(undefined);
     upCommon.cleanBuilderAppDirs = jest.fn().mockResolvedValue(undefined);
+    upCommon.prepareUrlsLocalRegistryForUpPlatform = jest.fn().mockResolvedValue(undefined);
     prompts.promptAiTool = jest.fn().mockResolvedValue(undefined);
     prompts.promptBuilderDirConflict = jest.fn().mockResolvedValue('keep');
     pathsUtil.getPrimaryUserSecretsLocalPath = jest
@@ -184,9 +199,34 @@ describe('lib/commands/setup-modes', () => {
   });
 
   describe('runUpPlatform', () => {
+    it('materializes platform templates before auth gate', async() => {
+      const order = [];
+      upCommon.prepareUrlsLocalRegistryForUpPlatform.mockImplementation(async() => {
+        order.push('templates');
+      });
+      setupPlatformAuth.ensureSetupPlatformAuth.mockImplementation(async(opts) => {
+        order.push('auth');
+        return {
+          platformControllerUrl: 'http://localhost:3600',
+          skipLoginIfAuthenticated: false,
+          forceSummary: opts.applyForceConfig
+            ? {
+              deviceCleared: 0,
+              clientCleared: 0,
+              defaultControllerUrl: 'http://localhost:3600',
+              environment: 'dev'
+            }
+            : null
+        };
+      });
+      await modes.runUpPlatform({ force: false });
+      expect(order).toEqual(['templates', 'auth']);
+    });
+
     it('skips force config when force=false', async() => {
       await modes.runUpPlatform({ force: false });
-      expect(upCommon.applyUpPlatformForceConfig).not.toHaveBeenCalled();
+      expect(upCommon.prepareUrlsLocalRegistryForUpPlatform).toHaveBeenCalled();
+      expect(setupPlatformAuth.ensureSetupPlatformAuth).toHaveBeenCalledWith({ applyForceConfig: false });
       expect(upCommon.cleanBuilderAppDirs).not.toHaveBeenCalled();
       expect(upMiso.handleUpMiso).toHaveBeenCalled();
       expect(upDataplane.handleUpDataplane).toHaveBeenCalled();
@@ -196,7 +236,7 @@ describe('lib/commands/setup-modes', () => {
 
     it('applies force config and cleans builder dirs when force=true', async() => {
       await modes.runUpPlatform({ force: true });
-      expect(upCommon.applyUpPlatformForceConfig).toHaveBeenCalled();
+      expect(setupPlatformAuth.ensureSetupPlatformAuth).toHaveBeenCalledWith({ applyForceConfig: true });
       expect(upCommon.cleanBuilderAppDirs).toHaveBeenCalledWith(
         ['keycloak', 'miso-controller', 'dataplane'],
         expect.any(Object)
@@ -260,7 +300,7 @@ describe('lib/commands/setup-modes', () => {
 
       await modes.runUpPlatform({ force: true });
 
-      expect(upCommon.applyUpPlatformForceConfig).not.toHaveBeenCalled();
+      expect(setupPlatformAuth.ensureSetupPlatformAuth).not.toHaveBeenCalled();
       expect(upCommon.cleanBuilderAppDirs).not.toHaveBeenCalled();
       expect(infraGuided.runGuidedUpPlatform).not.toHaveBeenCalled();
     });
@@ -272,7 +312,7 @@ describe('lib/commands/setup-modes', () => {
 
       await modes.runUpPlatform({ force: true });
 
-      expect(upCommon.applyUpPlatformForceConfig).toHaveBeenCalled();
+      expect(setupPlatformAuth.ensureSetupPlatformAuth).toHaveBeenCalledWith({ applyForceConfig: true });
       expect(upCommon.cleanBuilderAppDirs).not.toHaveBeenCalled();
       expect(infraGuided.runGuidedUpPlatform).toHaveBeenCalled();
     });
@@ -284,7 +324,7 @@ describe('lib/commands/setup-modes', () => {
       await modes.runUpPlatform({ force: true });
 
       expect(prompts.promptBuilderDirConflict).not.toHaveBeenCalled();
-      expect(upCommon.applyUpPlatformForceConfig).toHaveBeenCalled();
+      expect(setupPlatformAuth.ensureSetupPlatformAuth).toHaveBeenCalledWith({ applyForceConfig: true });
       expect(upCommon.cleanBuilderAppDirs).toHaveBeenCalled();
     });
 
@@ -316,17 +356,40 @@ describe('lib/commands/setup-modes', () => {
   });
 
   describe('runFreshInstall', () => {
-    it('prompts AI tool, then up-infra, then up-platform --force', async() => {
+    it('wipes volumes, starts infra, materializes templates, pulls images, then up-platform --force', async() => {
       const order = [];
+      fs.existsSync.mockImplementation((p) => String(p).endsWith('compose.yaml'));
+      dockerExec.execWithDockerEnv.mockImplementation(async(cmd) => {
+        if (String(cmd).includes(' pull')) order.push('pull');
+      });
       prompts.promptAiTool.mockImplementation(async() => order.push('ai'));
+      infra.stopInfraWithVolumes.mockImplementation(async() => order.push('down-v'));
       infra.startInfra.mockImplementation(async() => order.push('infra'));
       upMiso.handleUpMiso.mockImplementation(async() => order.push('miso'));
       upDataplane.handleUpDataplane.mockImplementation(async() => order.push('dataplane'));
+      upCommon.prepareUrlsLocalRegistryForUpPlatform.mockImplementation(async() => {
+        order.push('templates');
+      });
 
       await modes.runFreshInstall({ adminEmail: 'a@b', adminPassword: 'pw12345678' });
 
-      expect(order).toEqual(['infra', 'ai', 'miso', 'dataplane']);
-      expect(upCommon.applyUpPlatformForceConfig).toHaveBeenCalled();
+      expect(infra.stopInfraWithVolumes).toHaveBeenCalled();
+      expect(infra.removeAppVolumes).toHaveBeenCalledWith(
+        ['keycloak', 'miso-controller', 'dataplane'],
+        '02'
+      );
+      expect(order[0]).toBe('down-v');
+      expect(order[1]).toBe('infra');
+      expect(order.indexOf('templates')).toBeGreaterThan(order.indexOf('infra'));
+      expect(order).toContain('pull');
+      expect(order).toContain('miso');
+      expect(upCommon.prepareUrlsLocalRegistryForUpPlatform).toHaveBeenCalledWith(
+        expect.objectContaining({ silent: true })
+      );
+      expect(prompts.promptBuilderDirConflict).not.toHaveBeenCalled();
+      expect(upCommon.cleanBuilderAppDirs).not.toHaveBeenCalled();
+      expect(infraGuided.runGuidedUpPlatform).toHaveBeenCalled();
+      expect(setupPlatformAuth.ensureSetupPlatformAuth).toHaveBeenCalledWith({ applyForceConfig: true });
     });
   });
 
@@ -338,12 +401,39 @@ describe('lib/commands/setup-modes', () => {
       infra.startInfra.mockImplementation(async() => order.push('up-infra'));
       upMiso.handleUpMiso.mockImplementation(async() => order.push('miso'));
       upDataplane.handleUpDataplane.mockImplementation(async() => order.push('dataplane'));
+      prompts.promptAdminCredentials.mockResolvedValue({
+        adminEmail: 'reinstall@example.com',
+        adminPassword: 'ReInstall1!'
+      });
+      config.setAdminEmail = jest.fn().mockResolvedValue(undefined);
+
+      fs.existsSync.mockImplementation((p) => {
+        const s = String(p);
+        if (s.endsWith('compose.yaml')) return true;
+        if (s.includes('secrets.local')) return true;
+        return false;
+      });
+      dockerExec.execWithDockerEnv.mockImplementation(async(cmd) => {
+        if (String(cmd).includes(' pull')) order.push('pull');
+      });
 
       await modes.runReinstall();
 
-      expect(order).toEqual(['down', 'up-infra', 'miso', 'dataplane']);
+      expect(order[0]).toBe('down');
+      expect(order).toContain('pull');
+      expect(order).toContain('up-infra');
+      expect(order).toContain('miso');
       expect(fs.rmSync).toHaveBeenCalled();
-      expect(upCommon.applyUpPlatformForceConfig).toHaveBeenCalled();
+      expect(prompts.promptAdminCredentials).toHaveBeenCalled();
+      expect(config.setAdminEmail).toHaveBeenCalledWith('reinstall@example.com');
+      expect(infra.startInfra).toHaveBeenCalledWith(
+        null,
+        expect.objectContaining({
+          adminEmail: 'reinstall@example.com',
+          adminPassword: 'ReInstall1!'
+        })
+      );
+      expect(setupPlatformAuth.ensureSetupPlatformAuth).toHaveBeenCalledWith({ applyForceConfig: true });
     });
   });
 
@@ -357,22 +447,19 @@ describe('lib/commands/setup-modes', () => {
       infra.startInfra.mockImplementation(async() => order.push('up-infra'));
       upMiso.handleUpMiso.mockImplementation(async() => order.push('miso'));
 
+      fs.existsSync.mockImplementation((p) => String(p).endsWith('compose.yaml'));
+      dockerExec.execWithDockerEnv.mockImplementation(async(cmd) => {
+        if (String(cmd).includes(' pull')) order.push('pull');
+      });
+
       await modes.runWipeData();
 
+      expect(infra.stopInfraWithVolumes).not.toHaveBeenCalled();
       expect(order[0]).toBe('wipe');
+      expect(order).toContain('pull');
       expect(order).toContain('up-infra');
       expect(order).toContain('miso');
-      expect(upCommon.applyUpPlatformForceConfig).toHaveBeenCalled();
-    });
-  });
-
-  describe('runCleanInstallFiles', () => {
-    it('removes secrets, up-infra, up-platform --force', async() => {
-      fs.existsSync.mockReturnValue(true);
-      await modes.runCleanInstallFiles();
-      expect(fs.rmSync).toHaveBeenCalled();
-      expect(infra.startInfra).toHaveBeenCalled();
-      expect(upCommon.applyUpPlatformForceConfig).toHaveBeenCalled();
+      expect(setupPlatformAuth.ensureSetupPlatformAuth).toHaveBeenCalledWith({ applyForceConfig: true });
     });
   });
 
@@ -385,7 +472,7 @@ describe('lib/commands/setup-modes', () => {
         expect.any(Object)
       );
       expect(infra.startInfra).toHaveBeenCalled();
-      expect(upCommon.applyUpPlatformForceConfig).not.toHaveBeenCalled();
+      expect(setupPlatformAuth.ensureSetupPlatformAuth).toHaveBeenCalledWith({ applyForceConfig: false });
     });
 
     it('skips infra image pull when compose file is missing', async() => {

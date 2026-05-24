@@ -10,21 +10,41 @@ const {
   getDefaultControllerUrl,
   getControllerUrlFromLoggedInUser,
   hasStoredDeviceTokenForController,
+  isDeviceTokenUsableForController,
+  isPlatformAuthValidForController,
+  isControllerHealthReachable,
   resolveControllerUrl,
   getControllerFromConfig
 } = require('../../../lib/utils/controller-url');
+const authApi = require('../../../lib/api/auth.api');
 const envMap = require('../../../lib/utils/env-map');
 const devConfig = require('../../../lib/utils/dev-config');
 const config = require('../../../lib/core/config');
+const tokenManager = require('../../../lib/utils/token-manager');
 
 // Mock modules
 jest.mock('../../../lib/utils/env-map');
 jest.mock('../../../lib/utils/dev-config');
 jest.mock('../../../lib/core/config');
+jest.mock('../../../lib/utils/token-manager', () => ({
+  getDeviceToken: jest.fn(),
+  isTokenExpired: jest.fn(),
+  getOrRefreshDeviceToken: jest.fn()
+}));
+jest.mock('../../../lib/api/auth.api', () => ({
+  getAuthUser: jest.fn()
+}));
+
+const originalFetch = global.fetch;
 
 describe('Controller URL Utility', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    global.fetch = jest.fn().mockResolvedValue({ ok: true });
+  });
+
+  afterAll(() => {
+    global.fetch = originalFetch;
   });
 
   describe('getDefaultControllerUrl', () => {
@@ -249,6 +269,78 @@ describe('Controller URL Utility', () => {
         }
       });
       await expect(hasStoredDeviceTokenForController('https://controller.example.com')).resolves.toBe(false);
+    });
+  });
+
+  describe('isDeviceTokenUsableForController', () => {
+    it('returns false when no stored device entry', async() => {
+      config.getConfig.mockResolvedValue({ device: {} });
+      await expect(isDeviceTokenUsableForController('http://localhost:3600')).resolves.toBe(false);
+      expect(tokenManager.getDeviceToken).not.toHaveBeenCalled();
+    });
+
+    it('returns true when stored token is not expired', async() => {
+      config.getConfig.mockResolvedValue({
+        device: { 'http://localhost:3600': { token: 'x' } }
+      });
+      tokenManager.getDeviceToken.mockResolvedValue({
+        token: 'fresh',
+        controller: 'http://localhost:3600'
+      });
+      tokenManager.isTokenExpired.mockReturnValue(false);
+      await expect(isDeviceTokenUsableForController('http://localhost:3600/')).resolves.toBe(true);
+      expect(tokenManager.getDeviceToken).toHaveBeenCalled();
+    });
+
+    it('returns false when stored token is expired', async() => {
+      config.getConfig.mockResolvedValue({
+        device: { 'http://localhost:3600': { token: 'stale' } }
+      });
+      tokenManager.getDeviceToken.mockResolvedValue({
+        token: 'stale',
+        controller: 'http://localhost:3600'
+      });
+      tokenManager.isTokenExpired.mockReturnValue(true);
+      await expect(isDeviceTokenUsableForController('http://localhost:3600')).resolves.toBe(false);
+    });
+  });
+
+  describe('isPlatformAuthValidForController', () => {
+    it('returns false when no stored device entry', async() => {
+      config.getConfig.mockResolvedValue({ device: {} });
+      await expect(isPlatformAuthValidForController('http://localhost:3600')).resolves.toBe(false);
+      expect(tokenManager.getOrRefreshDeviceToken).not.toHaveBeenCalled();
+    });
+
+    it('returns true when refresh succeeds and controller validates token', async() => {
+      config.getConfig.mockResolvedValue({
+        device: { 'http://localhost:3600': { token: 'enc' } }
+      });
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'fresh-access',
+        controller: 'http://localhost:3600'
+      });
+      authApi.getAuthUser.mockResolvedValue({ success: true, data: { authenticated: true } });
+      await expect(isPlatformAuthValidForController('http://localhost:3600')).resolves.toBe(true);
+      expect(authApi.getAuthUser).toHaveBeenCalledWith('http://localhost:3600', {
+        type: 'bearer',
+        token: 'fresh-access'
+      });
+    });
+
+    it('uses local expiry check when controller health is unreachable', async() => {
+      global.fetch.mockRejectedValue(new Error('ECONNREFUSED'));
+      config.getConfig.mockResolvedValue({
+        device: { 'http://localhost:3600': { token: 'enc' } }
+      });
+      tokenManager.getDeviceToken.mockResolvedValue({
+        token: 'still-valid',
+        expiresAt: '2099-01-01T00:00:00.000Z'
+      });
+      tokenManager.isTokenExpired.mockReturnValue(false);
+      await expect(isPlatformAuthValidForController('http://localhost:3600')).resolves.toBe(true);
+      expect(tokenManager.getOrRefreshDeviceToken).not.toHaveBeenCalled();
+      expect(authApi.getAuthUser).not.toHaveBeenCalled();
     });
   });
 });

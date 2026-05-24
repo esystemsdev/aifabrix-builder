@@ -331,6 +331,7 @@ describe('up-common applyUpPlatformForceConfig', () => {
     jest.spyOn(config, 'clearAllClientTokens').mockResolvedValue(1);
     jest.spyOn(config, 'setCurrentEnvironment').mockResolvedValue(undefined);
     jest.spyOn(config, 'setControllerUrl').mockResolvedValue(undefined);
+    jest.spyOn(config, 'setPlatformControllerUrl').mockResolvedValue(undefined);
     controllerUrlMod.getDefaultControllerUrl.mockResolvedValue('http://localhost:3600');
   });
 
@@ -345,6 +346,18 @@ describe('up-common applyUpPlatformForceConfig', () => {
     expect(config.setCurrentEnvironment).toHaveBeenCalledWith('dev');
     expect(controllerUrlMod.getDefaultControllerUrl).toHaveBeenCalledTimes(1);
     expect(config.setControllerUrl).toHaveBeenCalledWith('http://localhost:3600');
+    expect(config.setPlatformControllerUrl).toHaveBeenCalledWith('http://localhost:3600');
+  });
+
+  it('skips token clear when clearTokens is false', async() => {
+    await applyUpPlatformForceConfig({
+      clearTokens: false,
+      defaultControllerUrl: 'https://dev06.builder.local/miso'
+    });
+    expect(config.clearAllDeviceTokens).not.toHaveBeenCalled();
+    expect(config.clearAllClientTokens).not.toHaveBeenCalled();
+    expect(config.setControllerUrl).toHaveBeenCalledWith('https://dev06.builder.local/miso');
+    expect(config.setPlatformControllerUrl).toHaveBeenCalledWith('https://dev06.builder.local/miso');
   });
 });
 

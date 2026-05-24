@@ -13,7 +13,12 @@ jest.mock('../../../lib/core/secrets-load', () => ({
   loadSecrets: jest.fn()
 }));
 
+jest.mock('../../../lib/core/admin-secrets', () => ({
+  readAndDecryptAdminSecrets: jest.fn().mockRejectedValue(new Error('no admin-secrets.env'))
+}));
+
 const secrets = require('../../../lib/core/secrets');
+const adminSecrets = require('../../../lib/core/admin-secrets');
 const secretsLoad = require('../../../lib/core/secrets-load');
 const { resolveAndGetEnvMap } = require('../../../lib/core/secrets-env-write');
 
@@ -102,5 +107,22 @@ describe('secrets-env-write resolveAndGetEnvMap', () => {
     const map = await resolveAndGetEnvMap('myapp', { environment: 'docker' });
 
     expect(map.NPM_TOKEN).toBe('npm-from-bash-secret');
+  });
+
+  it('applies admin-secrets platform overlay over kv-resolved app env', async() => {
+    adminSecrets.readAndDecryptAdminSecrets.mockResolvedValueOnce({
+      KEYCLOAK_ADMIN_PASSWORD: 'from-admin-file',
+      PLATFORM_ADMIN_PASSWORD: 'ui-from-file'
+    });
+    secrets.generateEnvContent.mockResolvedValue(
+      'KEYCLOAK_ADMIN_PASSWORD=from-kv\nONBOARDING_ADMIN_PASSWORD=from-kv\nPORT=3000\n'
+    );
+    secrets.loadSecrets.mockResolvedValue({});
+
+    const map = await resolveAndGetEnvMap('miso-controller', { environment: 'docker' });
+
+    expect(map.KEYCLOAK_ADMIN_PASSWORD).toBe('from-admin-file');
+    expect(map.ONBOARDING_ADMIN_PASSWORD).toBe('ui-from-file');
+    expect(map.PORT).toBe('3000');
   });
 });

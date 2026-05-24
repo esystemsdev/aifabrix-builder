@@ -75,7 +75,79 @@ describe('infrastructure/helpers ensureAdminSecrets', () => {
     expect(written.REDIS_COMMANDER_PASSWORD).toBe('admin1234');
     expect(written.PGADMIN_DEFAULT_EMAIL).toBe('admin@esystems.fi');
     expect(written.REDIS_COMMANDER_USER).toBe('admin');
+    expect(secretsEnsure.setSecretInStore).not.toHaveBeenCalled();
+  });
+
+  it('syncs catalog kv secrets when syncAdminKv is true (legacy)', async() => {
+    const { ensureAdminSecrets } = require('../../../lib/infrastructure/helpers');
+    await ensureAdminSecrets({
+      adminPassword: 'admin1234',
+      adminEmail: 'admin@esystems.fi',
+      syncAdminKv: true,
+      tlsEnabled: false
+    });
     expect(secretsEnsure.setSecretInStore).toHaveBeenCalledWith('postgres-passwordKeyVault', 'admin1234');
+    expect(secretsEnsure.setSecretInStore).toHaveBeenCalledWith(
+      'miso-controller-admin-passwordKeyVault',
+      'admin1234'
+    );
+    expect(secretsEnsure.setSecretInStore).toHaveBeenCalledWith(
+      'keycloak-admin-passwordKeyVault',
+      'admin1234'
+    );
+  });
+
+  it('creates admin-secrets.env and applies CLI adminPassword when file was missing', async() => {
+    fs.rmSync(adminPath, { force: true });
+    const secretsMod = require('../../../lib/core/secrets');
+    jest.spyOn(secretsMod, 'generateAdminSecretsEnv').mockImplementation(async() => {
+      fs.writeFileSync(
+        adminPath,
+        [
+          'POSTGRES_PASSWORD=stalepass',
+          'PGADMIN_DEFAULT_EMAIL=old@example.com',
+          'PGADMIN_DEFAULT_PASSWORD=stalepass',
+          'REDIS_COMMANDER_PASSWORD=stalepass',
+          'REDIS_COMMANDER_USER=admin',
+          'REDIS_HOST=local:redis:6379:0:'
+        ].join('\n'),
+        { mode: 0o600 }
+      );
+      return adminPath;
+    });
+
+    const { ensureAdminSecrets } = require('../../../lib/infrastructure/helpers');
+    await ensureAdminSecrets({
+      adminPassword: 'admin,123',
+      adminEmail: 'setup@example.com',
+      tlsEnabled: false
+    });
+
+    expect(secretsMod.generateAdminSecretsEnv).toHaveBeenCalled();
+    const written = parseAdminEnvContent(fs.readFileSync(adminPath, 'utf8'));
+    expect(written.POSTGRES_PASSWORD).toBe('admin,123');
+    expect(written.PGADMIN_DEFAULT_PASSWORD).toBe('admin,123');
+    expect(written.PGADMIN_DEFAULT_EMAIL).toBe('setup@example.com');
+    expect(fs.readFileSync(adminPath, 'utf8')).toContain('POSTGRES_PASSWORD="admin,123"');
+  });
+
+  it('writes pro split password bundle into distinct admin-secrets keys', async() => {
+    const { ensureAdminSecrets } = require('../../../lib/infrastructure/helpers');
+    const { splitPasswordBundle } = require('../../../lib/core/admin-secrets-bundle');
+    await ensureAdminSecrets({
+      passwordBundle: splitPasswordBundle({
+        infra: 'infra-pass',
+        keycloak: 'kc-pass',
+        platform: 'ui-pass'
+      }),
+      adminEmail: 'pro@example.com',
+      tlsEnabled: false
+    });
+    const written = parseAdminEnvContent(fs.readFileSync(adminPath, 'utf8'));
+    expect(written.POSTGRES_PASSWORD).toBe('infra-pass');
+    expect(written.KEYCLOAK_ADMIN_PASSWORD).toBe('kc-pass');
+    expect(written.PLATFORM_ADMIN_PASSWORD).toBe('ui-pass');
+    expect(written.PGADMIN_DEFAULT_EMAIL).toBe('pro@example.com');
   });
 
   it('does not put userPassword in admin-secrets.env (Keycloak default user lives in secrets store)', async() => {

@@ -1,3 +1,8 @@
+## [2.45.6] - 2026-05-22
+
+### Changed
+- **`aifabrix setup` (Plan 147):** Infra-running menu is **three** modes (removed clean-files). **Fresh install**, **re-install**, **wipe data**, and **update images** all **pull** infra and platform Docker images before `up-infra`. Persists **`platform-controller`** in `config.yaml` (absolute Miso URL from declarative routing). **`up-platform --force`** keeps the device token when already authenticated to that URL; otherwise clears tokens and runs device login. **Platform Ready** footer uses the resolved platform controller URL.
+
 ## [2.45.5] - 2026-05-21
 
 ### Added

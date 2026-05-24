@@ -20,15 +20,19 @@ One-shot installer that brings up the full local AI Fabrix platform (infra + mis
 - **No infrastructure running (fresh install):**
   - Wizard prompts for the **admin email** and **admin password** (used by Postgres, pgAdmin, and Keycloak).
   - Wizard asks for an **AI tool** (OpenAI or Azure OpenAI) only when no key is found in the merged secret view (user-local `~/.aifabrix/secrets.local.yaml` plus the shared `aifabrix-secrets` file). Provided keys are written to `~/.aifabrix/secrets.local.yaml`.
+  - Pulls latest **infrastructure** and **platform** Docker images (Postgres, Redis, Keycloak, Miso Controller, Dataplane).
   - Runs `aifabrix up-infra` (with the wizard answers) and then starts platform services (`up-miso` + `up-dataplane`).
 
-- **Infrastructure already running (mode menu):**
-  1. **Re-install (all services - all data will be lost)** — Stops infra and removes every Docker volume (`down-infra -v`), removes `~/.aifabrix/secrets.local.yaml`, then runs `up-infra` and `up-platform --force` (clears the platform **`builder/keycloak`**, **`builder/miso-controller`**, and **`builder/dataplane`** trees under the resolved workspace or home — **aifabrix-work** when set, else **aifabrix-home** — and re-fetches templates). See [Developer isolation](developer-isolation.md#aifabrix-dev-set-work).
-  2. **Wipe data** — Drops every database and DB user in the running Postgres container (volume preserved), removes `~/.aifabrix/secrets.local.yaml`, then runs `up-infra` and `up-platform --force`.
-  3. **Clean installation files** — Removes `~/.aifabrix/secrets.local.yaml`, then runs `up-infra` and `up-platform --force`.
-  4. **Update images** — Runs `docker compose pull` against the developer-scoped infra compose file plus `docker pull` for each platform app's image, then runs `up-infra` and `up-platform` (no `--force`; secrets and data preserved).
+- **Infrastructure already running (mode menu — three choices):**
+  1. **Re-install (all services - all data will be lost)** — Stops infra and removes every Docker volume (`down-infra -v`), removes `~/.aifabrix/secrets.local.yaml`, pulls images, then runs `up-infra` and `up-platform --force` (clears the platform **`builder/keycloak`**, **`builder/miso-controller`**, and **`builder/dataplane`** trees under the resolved workspace or home — **aifabrix-work** when set, else **aifabrix-home** — and re-fetches templates). See [Developer isolation](developer-isolation.md#aifabrix-dev-set-work).
+  2. **Wipe data** — Drops every database and DB user in the running Postgres container (volume preserved), removes `~/.aifabrix/secrets.local.yaml`, pulls images, then runs `up-infra` and `up-platform --force`.
+  3. **Update images** — Pulls infrastructure and platform images, then runs `up-infra` and `up-platform` (no `--force`; secrets and data preserved).
 
-The shared `aifabrix-secrets` file is **never** modified by `aifabrix setup`. The admin password and email are persisted via the existing `up-infra` flow into `admin-secrets.env`; that file is preserved across modes 2, 3, and 4.
+**Platform controller URL:** During setup, the CLI computes the absolute Miso Controller URL for your profile (local Docker: `http://localhost:` + port `3000 + developerId×100` when Traefik is off; remote dev: hostname from `remote-server` and Traefik path `/miso/*` when enabled) and stores it in `config.yaml` as **`platform-controller`**. Setup also sets **`controller`** to the same URL. If you are already logged in to that URL (device token in config), setup **keeps** your session; otherwise it clears tokens and runs the same device login step as a fresh install.
+
+The shared `aifabrix-secrets` file is **never** modified by `aifabrix setup`. The admin password and email are persisted via the existing `up-infra` flow into `admin-secrets.env`; that file is preserved across wipe-data and update-images modes.
+
+**Admin credentials (dev / pro):** Setup and `up-infra` write passwords to **`admin-secrets.env`** next to `config.yaml` (Postgres, pgAdmin, Redis Commander, Keycloak install admin, platform UI login). **Dev** profile uses one password for all roles; **pro** can autogenerate or use `--infraAdminPassword`, `--keycloakAdminPassword`, and `--platformAdminPassword`. Platform containers receive Keycloak/onboarding env from that file at resolve/run time (admin-secrets overlay wins over app `kv://` for those keys). Catalog `secrets.local.yaml` sync for `{{adminPassword}}` is **off by default**; pass **`--syncAdminKv`** on `up-infra` only if you still need legacy kv placeholders updated. Default dev wizard password is **`admin123`**; UI login is username **`admin`**. Mode **re-install** re-prompts after volumes are removed. If login fails after a password change on an old Postgres volume, reset the volume (`down-infra -v` or re-install) and run setup again.
 
 **When:** First-time install, recovering from a broken state, refreshing platform images.
 
@@ -48,7 +52,8 @@ aifabrix setup --yes
 **Issues:**
 - **"Postgres container not running" during wipe-data mode** → Run `aifabrix up-infra` first, then re-run `aifabrix setup`.
 - **AI tool prompt keeps appearing** → The merged secret view does not contain a non-placeholder value for the chosen provider's keys. Set them with `aifabrix secret set` or accept the prompt.
-- **`secrets.local.yaml` still has old keys after Mode 1/2/3** → That file is removed; if the AI tool prompt was skipped, the keys are coming from the **shared** `aifabrix-secrets` file (which `setup` never modifies).
+- **`secrets.local.yaml` still has old keys after re-install or wipe-data** → That file is removed in those modes; if the AI tool prompt was skipped, the keys are coming from the **shared** `aifabrix-secrets` file (which `setup` never modifies).
+- **Wrong controller after setup** → Check **Platform Ready** footer or `platform-controller` in config; run `aifabrix login` against that URL, or use **Update images** mode to refresh without wiping data.
 
 See also: [`aifabrix teardown`](#aifabrix-teardown), [`aifabrix up-infra`](#aifabrix-up-infra), [`aifabrix up-platform`](#aifabrix-up-platform), [`aifabrix down-infra`](#aifabrix-down-infra).
 
@@ -59,9 +64,9 @@ See also: [`aifabrix teardown`](#aifabrix-teardown), [`aifabrix up-infra`](#aifa
 
 Symmetrical inverse of `aifabrix setup` — fully removes the local installation.
 
-**What:** Runs `down-infra -v` (stops all infra + apps and deletes every Docker volume), then removes every file and subfolder inside `~/.aifabrix/` **except** `config.yaml`. The cleaned set includes `secrets.local.yaml`, `admin-secrets.env`, auth/token files, and any `infra-dev*` directories.
+**What:** Runs `down-infra -v` (stops all infra + apps and deletes every Docker volume), then removes every file and subfolder inside the resolved AI Fabrix system directory **except** `config.yaml` and `certs/`. The cleaned set includes `secrets.local.yaml`, `admin-secrets.env`, auth/token files, and any `infra-dev*` directories. It also removes materialized **`builder/`** trees under **aifabrix-work** (when set), under the config directory, and under the current working directory so a later **`aifabrix setup`** starts without stale platform app folders.
 
-The directory cleaned is the resolved AI Fabrix system directory (the same directory used by `aifabrix-home` overrides), not literally `$HOME/.aifabrix` when an override is set.
+The system directory cleaned is the same one used by `aifabrix-home` overrides, not literally `$HOME/.aifabrix` when an override is set.
 
 **When:** Reset a developer machine, hand a workstation off, or recover from a broken state where surgical fixes do not help.
 
@@ -137,8 +142,12 @@ Default **`${TLS_ENABLED}`** is **`false`**, so default **`${HTTP_ENABLED}`** is
 **Options:**
 - `-d, --developer <id>` - Set developer ID and start infrastructure with developer-specific ports. Developer ID must be a non-negative integer (0 = default infra, 1+ = developer-specific). When provided, sets the developer ID in `~/.aifabrix/config.yaml` and starts infrastructure with isolated ports.
 - `--verbose` - Show full orchestration output (compose generation, health checks, container details). Default output is a guided summary + “Infra Ready” footer.
-- `--adminPassword <password>` - Override the catalog default for the shared admin password for this run and when filling missing bootstrap secrets that use that default (Postgres admin password, pgAdmin and Redis Commander wiring, Keycloak admin password bootstrap, controller onboarding admin password, and other catalog entries tied to the same placeholder). Also written to `admin-secrets.env` in the **same directory as `config.yaml`** (often `~/.aifabrix/`, not plain `$HOME` when `aifabrix-home` points at `$HOME`) when that file is created or updated for infra admin access. Use a strong password in shared environments.
-- `--adminEmail <email>` - Override the catalog default admin email for this run (for example pgAdmin login email and controller onboarding email bootstrap where the catalog maps it).
+- `--adminPassword <password>` - **Dev** (or pro manual-single): one password written to `admin-secrets.env` for Postgres, pgAdmin, Redis Commander, Keycloak install admin, and platform UI login (`admin` user).
+- `--infraAdminPassword <password>` - **Pro split:** infra DB/pgAdmin/Redis Commander password only.
+- `--keycloakAdminPassword <password>` - **Pro split:** Keycloak install admin password.
+- `--platformAdminPassword <password>` - **Pro split:** platform UI login password for user `admin`.
+- `--syncAdminKv` - Legacy: also copy admin passwords into `secrets.local.yaml` for every catalog entry using `{{adminPassword}}` (not required for normal setup).
+- `--adminEmail <email>` - Override admin email (pgAdmin login and onboarding email where mapped).
 - `--userPassword <password>` - Override the catalog default for the Keycloak default end-user password bootstrap where the catalog maps it.
 - **Postgres volume caveat:** The Postgres container applies the superuser password when the data volume is **first** created. If you change `--adminPassword` after Postgres was already initialized, database login can fail until you reset the volume: `cd ~/.aifabrix/infra && docker compose -f compose.yaml -p aifabrix down -v`, then run `aifabrix up-infra --adminPassword <password>` again (use your developer-specific compose project name if you use `--developer`).
 - `--pgAdmin` - Include pgAdmin web UI and save to config (default: enabled).

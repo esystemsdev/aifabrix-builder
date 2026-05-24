@@ -107,9 +107,21 @@ describe('admin-secrets', () => {
       expect(out).toContain('KEY=');
     });
 
-    it('strips newlines from values', () => {
+    it('strips newlines from values and quotes when whitespace remains', () => {
       const out = adminSecrets.envObjectToContent({ X: 'a\nb' });
-      expect(out).toContain('X=a b');
+      expect(out).toBe('X="a b"');
+    });
+
+    it('quotes values containing commas for safe parsing', () => {
+      const out = adminSecrets.envObjectToContent({ POSTGRES_PASSWORD: 'admin,123' });
+      expect(out).toBe('POSTGRES_PASSWORD="admin,123"');
+    });
+  });
+
+  describe('parseAdminEnvContent quoted values', () => {
+    it('parses double-quoted values with commas', () => {
+      const map = adminSecrets.parseAdminEnvContent('POSTGRES_PASSWORD="admin,123"\n');
+      expect(map.POSTGRES_PASSWORD).toBe('admin,123');
     });
   });
 
