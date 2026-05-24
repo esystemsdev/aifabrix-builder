@@ -75,6 +75,26 @@ describe('help-builder', () => {
       expect(mgmtCat.commands.map(c => c.name)).toContain('deployment');
     });
 
+    it('should include dimension, identity, and protection in Application & Management', () => {
+      const mgmtCat = CATEGORIES.find(c => c.name === 'Application & Management');
+      expect(mgmtCat).toBeDefined();
+      const names = mgmtCat.commands.map(c => c.name);
+      expect(names).toContain('dimension');
+      expect(names).toContain('dimension value');
+      expect(names).toContain('identity');
+      expect(names).toContain('protection');
+    });
+
+    it('should not list dimension, identity, or protection under External Systems', () => {
+      const extCat = CATEGORIES.find(c => c.name === 'External Systems');
+      expect(extCat).toBeDefined();
+      const names = extCat.commands.map(c => c.name);
+      expect(names).not.toContain('dimension');
+      expect(names).not.toContain('dimension value');
+      expect(names).not.toContain('identity');
+      expect(names).not.toContain('protection');
+    });
+
     it('should include only env in Environments category', () => {
       const envCat = CATEGORIES.find(c => c.name === 'Environments');
       expect(envCat).toBeDefined();
