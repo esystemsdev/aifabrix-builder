@@ -7,12 +7,12 @@
         "key":"external-datasource-schema",
         "name":"External Data Source Configuration Schema",
         "description":"JSON schema for validating ExternalDataSource configuration files",
-    "version":"2.4.10",
+    "version":"2.4.11",
         "type":"schema",
         "category":"integration",
         "author":"AI Fabrix Team",
         "createdAt":"2024-01-01T00:00:00Z",
-        "updatedAt":"2026-05-10T00:00:00Z",
+        "updatedAt":"2026-05-21T00:00:00Z",
         "compatibility":{
            "minVersion":"1.0.0",
            "maxVersion":"3.0.0",
@@ -181,6 +181,14 @@
            "date":"2026-04-24T00:00:00Z",
            "changes":[
               "Added optional fetch.httpResponseNormalization for manifest-driven GET response shaping (302 Location follow, JSON redirect envelopes, nested JSON string URL follow-up)."
+           ],
+           "breaking":false
+        },
+        {
+           "version":"2.4.11",
+           "date":"2026-05-21T00:00:00Z",
+           "changes":[
+              "Added optional dimensionBinding.enabled (boolean, default true). When false, the binding is not used for protection/RSS dimension enforcement; distinct from dimensionBinding.required (record validation/sync)."
            ],
            "breaking":false
         },
@@ -1477,6 +1485,11 @@
            "required":{
               "type":"boolean",
               "default":true
+           },
+           "enabled":{
+              "type":"boolean",
+              "default":true,
+              "description":"When false, this dimension binding is not used for protection/RSS dimension enforcement or governance visibility checks. Catalog binding and metadata materialization may still apply. Use object form to disable; string shorthand bindings are always enforcement-enabled."
            }
         },
         "oneOf":[
