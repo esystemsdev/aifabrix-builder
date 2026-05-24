@@ -237,11 +237,15 @@ Local key name only — **not** read from Azure Key Vault by the CLI. If present
 
 ## admin-secrets.env and run .env (ISO 27K)
 
-**File:** **`~/.aifabrix/admin-secrets.env`** — infra admin credentials (Postgres, pgAdmin, Redis Commander).
+**File:** **`~/.aifabrix/admin-secrets.env`** — **all admin credentials** (Postgres, pgAdmin, Redis Commander, Keycloak install admin, platform UI login for user **`admin`**). App and integration secrets stay in **`secrets.local.yaml`**.
+
+**Setup profiles:** **`aifabrix setup`** uses **`setupInstallationProfile`** **`dev`** (one password for all admin keys) or **`pro`** (autogenerate three passwords shown once, or manual entry). See [Infrastructure](../infrastructure.md#dev-and-pro-installation-profiles).
 
 **On disk:** written **`600`**; enforced on read.
 
-**Password sync:** **`aifabrix up-infra --adminPassword`** updates admin password and syncs to **`postgres-passwordKeyVault`** in the main secrets store.
+**`aifabrix up-infra`:** updates **`admin-secrets.env`** (`--adminPassword` for dev; `--infraAdminPassword`, `--keycloakAdminPassword`, `--platformAdminPassword` for pro split). Legacy **`--syncAdminKv`** optionally copies admin passwords into catalog keys in **`secrets.local.yaml`** (off by default).
+
+**Resolve / run:** Keycloak and onboarding admin env vars are injected from decrypted **`admin-secrets.env`** (not from **`secrets.local.yaml`** admin kv keys).
 
 **Encryption:** with **`secrets-encryption`**, values in **`admin-secrets.env`** are **`secure://`**; without the key, they may be plaintext.
 

@@ -69,6 +69,20 @@ describe('manifest-source-emit', () => {
     expect(String(line)).toContain('/abs/app/application.yaml');
   });
 
+  it('does not log during aifabrix setup command flow', () => {
+    Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true });
+    const ctx = require('../../../lib/commands/setup-run-context');
+    ctx.beginSetupCommandFlow();
+    const { emitManifestMetadataLineIfTTY } = require('../../../lib/utils/manifest-source-emit');
+    const logs = [];
+    emitManifestMetadataLineIfTTY(
+      { log: (s) => logs.push(String(s)) },
+      { appKey: 'keycloak', appPath: '/tmp/kc', envOnly: false, json: false }
+    );
+    ctx.endSetupCommandFlow();
+    expect(logs).toEqual([]);
+  });
+
   it('logs one line when TTY and config exists', () => {
     const fs = jest.requireActual('node:fs');
     const os = require('os');

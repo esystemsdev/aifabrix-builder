@@ -75,7 +75,10 @@ describe('infrastructure/helpers ensureAdminSecrets', () => {
     expect(written.REDIS_COMMANDER_PASSWORD).toBe('admin1234');
     expect(written.PGADMIN_DEFAULT_EMAIL).toBe('admin@esystems.fi');
     expect(written.REDIS_COMMANDER_USER).toBe('admin');
-    expect(secretsEnsure.setSecretInStore).not.toHaveBeenCalled();
+    expect(secretsEnsure.setSecretInStore).toHaveBeenCalledWith(
+      'keycloak-admin-passwordKeyVault',
+      'admin1234'
+    );
   });
 
   it('syncs catalog kv secrets when syncAdminKv is true (legacy)', async() => {
@@ -148,6 +151,10 @@ describe('infrastructure/helpers ensureAdminSecrets', () => {
     expect(written.KEYCLOAK_ADMIN_PASSWORD).toBe('kc-pass');
     expect(written.PLATFORM_ADMIN_PASSWORD).toBe('ui-pass');
     expect(written.PGADMIN_DEFAULT_EMAIL).toBe('pro@example.com');
+    expect(secretsEnsure.setSecretInStore).toHaveBeenCalledWith(
+      'keycloak-admin-passwordKeyVault',
+      'kc-pass'
+    );
   });
 
   it('does not put userPassword in admin-secrets.env (Keycloak default user lives in secrets store)', async() => {

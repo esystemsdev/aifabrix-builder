@@ -91,4 +91,24 @@ describe('lib/commands/setup-platform-auth', () => {
     await ensureSetupPlatformAuth({ applyForceConfig: false });
     expect(upCommon.applyUpPlatformForceConfig).not.toHaveBeenCalled();
   });
+
+  it('clearTokensAlways clears tokens even when platform auth appears valid', async() => {
+    controllerUrl.isPlatformAuthValidForController.mockResolvedValue(true);
+    upCommon.applyUpPlatformForceConfig.mockResolvedValue({
+      deviceCleared: 1,
+      clientCleared: 0,
+      defaultControllerUrl: 'http://localhost:3600',
+      environment: 'dev'
+    });
+    const result = await ensureSetupPlatformAuth({
+      applyForceConfig: true,
+      clearTokensAlways: true
+    });
+    expect(upCommon.applyUpPlatformForceConfig).toHaveBeenCalledWith({
+      silent: true,
+      clearTokens: true,
+      defaultControllerUrl: 'http://localhost:3600'
+    });
+    expect(result.skipLoginIfAuthenticated).toBe(false);
+  });
 });

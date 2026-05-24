@@ -19,6 +19,12 @@ jest.mock('../../../lib/utils/logger');
 jest.mock('../../../lib/utils/docker');
 jest.mock('../../../lib/utils/docker-exec');
 jest.mock('../../../lib/utils/postgres-wipe');
+jest.mock('../../../lib/utils/postgres-platform-bootstrap', () => ({
+  bootstrapPlatformPostgresDatabases: jest.fn().mockResolvedValue(['keycloak', 'miso'])
+}));
+jest.mock('../../../lib/app', () => ({
+  stopAndRemoveContainer: jest.fn().mockResolvedValue(undefined)
+}));
 jest.mock('../../../lib/commands/up-miso');
 jest.mock('../../../lib/commands/up-dataplane');
 jest.mock('../../../lib/commands/up-common');
@@ -64,6 +70,8 @@ const logger = require('../../../lib/utils/logger');
 const dockerUtils = require('../../../lib/utils/docker');
 const dockerExec = require('../../../lib/utils/docker-exec');
 const postgresWipe = require('../../../lib/utils/postgres-wipe');
+const postgresBootstrap = require('../../../lib/utils/postgres-platform-bootstrap');
+const appLib = require('../../../lib/app');
 const upMiso = require('../../../lib/commands/up-miso');
 const upDataplane = require('../../../lib/commands/up-dataplane');
 const upCommon = require('../../../lib/commands/up-common');
@@ -389,7 +397,11 @@ describe('lib/commands/setup-modes', () => {
       expect(prompts.promptBuilderDirConflict).not.toHaveBeenCalled();
       expect(upCommon.cleanBuilderAppDirs).not.toHaveBeenCalled();
       expect(infraGuided.runGuidedUpPlatform).toHaveBeenCalled();
-      expect(setupPlatformAuth.ensureSetupPlatformAuth).toHaveBeenCalledWith({ applyForceConfig: true });
+      expect(setupPlatformAuth.ensureSetupPlatformAuth).toHaveBeenCalledWith({
+        applyForceConfig: true,
+        clearTokensAlways: true
+      });
+      expect(postgresBootstrap.bootstrapPlatformPostgresDatabases).toHaveBeenCalled();
     });
   });
 
@@ -433,7 +445,11 @@ describe('lib/commands/setup-modes', () => {
           adminPassword: 'ReInstall1!'
         })
       );
-      expect(setupPlatformAuth.ensureSetupPlatformAuth).toHaveBeenCalledWith({ applyForceConfig: true });
+      expect(postgresBootstrap.bootstrapPlatformPostgresDatabases).toHaveBeenCalled();
+      expect(setupPlatformAuth.ensureSetupPlatformAuth).toHaveBeenCalledWith({
+        applyForceConfig: true,
+        clearTokensAlways: true
+      });
     });
   });
 
@@ -459,7 +475,12 @@ describe('lib/commands/setup-modes', () => {
       expect(order).toContain('pull');
       expect(order).toContain('up-infra');
       expect(order).toContain('miso');
-      expect(setupPlatformAuth.ensureSetupPlatformAuth).toHaveBeenCalledWith({ applyForceConfig: true });
+      expect(postgresBootstrap.bootstrapPlatformPostgresDatabases).toHaveBeenCalled();
+      expect(appLib.stopAndRemoveContainer).toHaveBeenCalled();
+      expect(setupPlatformAuth.ensureSetupPlatformAuth).toHaveBeenCalledWith({
+        applyForceConfig: true,
+        clearTokensAlways: true
+      });
     });
   });
 

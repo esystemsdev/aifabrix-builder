@@ -15,6 +15,7 @@ const {
   listAppDirsForDiscovery,
   listBuilderAppDirsForDiscovery,
   deriveDatabaseKvKeysFromWorkspace,
+  deriveDatabaseKvKeysFromShippedPlatformTemplates,
   discoverKvKeysFromEnvTemplatesForHook,
   getAllInfraEnsureKeys
 } = require('../../../lib/parameters/infra-kv-discovery');
@@ -139,6 +140,20 @@ describe('infra-kv-discovery', () => {
       };
       expect(listBuilderAppDirsForDiscovery(pathsUtil)).toEqual([]);
       rmTmp(tmp);
+    });
+  });
+
+  describe('deriveDatabaseKvKeysFromShippedPlatformTemplates', () => {
+    it('includes keycloak and miso-controller DB keys without builder/ on disk', () => {
+      const keys = deriveDatabaseKvKeysFromShippedPlatformTemplates();
+      expect(keys).toEqual(
+        expect.arrayContaining([
+          'databases-keycloak-0-passwordKeyVault',
+          'databases-keycloak-0-urlKeyVault',
+          'databases-miso-controller-0-passwordKeyVault',
+          'databases-dataplane-0-passwordKeyVault'
+        ])
+      );
     });
   });
 

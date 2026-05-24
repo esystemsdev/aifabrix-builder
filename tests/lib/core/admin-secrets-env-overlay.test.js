@@ -18,6 +18,8 @@ describe('admin-secrets-env-overlay', () => {
       PGADMIN_DEFAULT_EMAIL: 'admin@example.com'
     });
     expect(overlay.KEYCLOAK_ADMIN_PASSWORD).toBe('kc-secret');
+    expect(overlay.KC_BOOTSTRAP_ADMIN_PASSWORD).toBe('kc-secret');
+    expect(overlay.KC_BOOTSTRAP_ADMIN_USERNAME).toBe('admin');
     expect(overlay.ONBOARDING_ADMIN_PASSWORD).toBe('ui-secret');
     expect(overlay.MISO_ADMIN_PASSWORD).toBe('ui-secret');
     expect(overlay.ONBOARDING_ADMIN_EMAIL).toBe('admin@example.com');
