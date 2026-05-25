@@ -3,6 +3,7 @@
   "datasourceKey": "fixture.ds",
   "systemKey": "fixture",
   "runType": "e2e",
+  "stage": "e2e",
   "status": "ok",
   "reportCompleteness": "full",
   "runId": "run_fixture_rich",

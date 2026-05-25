@@ -2,19 +2,24 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "aifabrix://schema/datasource-test-run.schema.json",
   "title": "DatasourceTestRun",
-  "description": "Canonical datasource-root test report (plans 362/365, 370.06). Public success shape for POST /api/v1/validation/run (and async poll GET /validation/run/{testRunId}). runType=test|integration|e2e. reportVersion semver on this envelope: additive optional fields (e.g. Issue conceptId, ruleId, stableCode, fix in 1.4.0) => minor bump; removed/renamed fields => major bump. Older clients must tolerate absent Issue traceability/fix fields; new clients should read them when present for YAML/hybrid rules.",
+  "description": "Canonical datasource-root test report (plans 362/365, 370.06, 370.07 stage). Public success shape for POST /api/v1/validation/run (and async poll GET /validation/run/{testRunId}). runType=test|integration|e2e; stage=readiness|simulation|integration|e2e. reportVersion 1.5.0 adds required stage (minor bump). Older clients must tolerate absent stage when reportVersion < 1.5.0.",
   "type": "object",
-  "required": ["reportVersion", "datasourceKey", "systemKey", "runType", "status"],
+  "required": ["reportVersion", "datasourceKey", "systemKey", "runType", "stage", "status"],
   "properties": {
     "reportVersion": {
       "type": "string",
       "description": "Semver-style contract version for this envelope. Policy: additive fields => minor bump within same major; removed/renamed fields => major bump. Route migrations must cite target reportVersion.",
-      "example": "1.4.0"
+      "example": "1.5.0"
     },
     "runType": {
       "type": "string",
-      "description": "Kind of run. Maps to CLI/commands: test=test, test-integration=integration, test-e2e=e2e. Do not use kebab strings inside runType.",
+      "description": "Legacy kind of run. Maps to CLI: test, test-integration, test-e2e. Prefer stage for new clients.",
       "enum": ["test", "integration", "e2e"]
+    },
+    "stage": {
+      "type": "string",
+      "description": "Contract validation stage aligned with contracts/rules stage and concept appliesTo.",
+      "enum": ["readiness", "simulation", "integration", "e2e"]
     },
     "status": {
       "type": "string",

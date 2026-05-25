@@ -3,6 +3,7 @@
   "datasourceKey": "hubspot.deals",
   "systemKey": "hubspot",
   "runType": "test",
+  "stage": "readiness",
   "status": "ok",
   "reportCompleteness": "full",
   "runId": "run_fixture_1"
