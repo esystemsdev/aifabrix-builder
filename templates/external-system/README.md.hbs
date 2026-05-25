@@ -41,7 +41,8 @@ Rollback an experiment: `datasource capability remove …` → validate → uplo
 
 | Command | What it does |
 | --- | --- |
-| `aifabrix upload {{appName}}` | Publishes local integration files to the dataplane and pushes credential secrets from `integration/{{appName}}/.env` (when present). |
+| `aifabrix upload {{appName}}` | Publishes local integration files to the dataplane (refreshes `{{systemKey}}-deploy.json` from sources) and pushes credential secrets from `integration/{{appName}}/.env` (when present). |
+| `aifabrix upload {{appName}} --force` | Same publish path when the interface or datasource schema changed in ways **deploy cannot accept yet**; bypasses active-schema replacement guards. Read the CLI warning before use. |
 | `aifabrix deploy {{appName}}` | Deploys via the controller pipeline. Does **not** replace a full upload for credential secrets — run `upload` or `credential push` when `.env` changed. |
 | `aifabrix credential push {{appName}}` | Pushes `KV_*` values from `.env` only (no manifest publish). |
 
@@ -49,6 +50,10 @@ Rollback an experiment: `datasource capability remove …` → validate → uplo
 aifabrix upload {{appName}}
 # or secrets only:
 aifabrix credential push {{appName}}
+
+# Breaking schema / interface change — deploy blocked; publish for dev iteration
+aifabrix validate {{appName}}
+aifabrix upload {{appName}} --force
 ```
 
 ## Protection manifests
@@ -146,6 +151,7 @@ Useful flags: `--dry-run`, `--auth <method>`, `--rbac`, `--expose`, `--sync`, `-
 | `aifabrix test-integration {{appName}}` | On | Needs login + dataplane |
 | `aifabrix test-e2e {{appName}}` | On | E2E for every datasource; uploads local files first unless `--no-sync` |
 | `aifabrix test-trust {{appName}}` | On | Semantic agent metadata trust (not live API E2E); uploads first unless `--no-sync` |
+| `aifabrix test-governance {{appName}}` | On | ABAC visibility acceptance (scenario packs); uploads first unless `--no-sync` |
 
 System-level tests publish local integration files before the run (same path as `upload`). Use **`--no-sync`** to validate against config already on the dataplane.
 
@@ -153,6 +159,8 @@ System-level tests publish local integration files before the run (same path as 
 aifabrix test-trust {{appName}}
 aifabrix test-trust {{appName}} --no-sync
 aifabrix test-e2e {{appName}} --no-sync
+aifabrix test-governance {{appName}}
+aifabrix test-governance {{appName}} --no-sync --verbose
 ```
 
 Single datasource E2E:
@@ -195,5 +203,6 @@ aifabrix delete {{appName}}
 ## When something fails
 
 - **Validation errors** — Fix JSON/schema issues; run `aifabrix validate {{appName}}` and `aifabrix datasource validate` on the file you changed.
+- **Deploy blocked by schema changes** — When the interface changed and deploy rejects the update, validate locally then `aifabrix upload {{appName}} --force` to publish for dev iteration (see [Publish and credentials](#publish-and-credentials)).
 - **Auth** — `aifabrix auth config` + `aifabrix login` before upload, deploy, or remote tests.
 - **Wrong folder** — Run CLI from the project root (where `integration/{{appName}}/` lives).

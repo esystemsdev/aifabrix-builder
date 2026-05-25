@@ -527,6 +527,8 @@ describe('Generator Split Functions', () => {
       expect(result).toContain('integration/test-hubspot');
       expect(result).toContain('Datasource: Companies Data');
       expect(result).toContain('Datasource: Deals Data');
+      expect(result).toContain('aifabrix test-governance test-hubspot');
+      expect(result).toContain('aifabrix upload test-hubspot --force');
     });
 
     it('should use fileExt .yaml when options request split-style YAML layout', () => {

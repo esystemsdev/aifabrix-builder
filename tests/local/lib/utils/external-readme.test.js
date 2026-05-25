@@ -392,6 +392,17 @@ describe('external-readme', () => {
       expect(out).toContain('aifabrix upload ');
     });
 
+    it('documents test-governance and upload --force for blocked deploys', () => {
+      const out = generateExternalReadmeContent({
+        systemKey: 'myext',
+        appName: 'myext',
+        datasources: []
+      });
+      expect(out).toContain('aifabrix test-governance myext');
+      expect(out).toContain('aifabrix upload myext --force');
+      expect(out).toContain('Deploy blocked by schema changes');
+    });
+
     it('includes deploy.js and wizard.yaml in Files section', () => {
       const out = generateExternalReadmeContent({
         systemKey: 'myext',
