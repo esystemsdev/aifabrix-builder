@@ -2,14 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "aifabrix://schema/datasource-test-run.schema.json",
   "title": "DatasourceTestRun",
-  "description": "Canonical datasource-root test report (plans 362/365). Public success shape for POST /api/v1/validation/run (and async poll GET /validation/run/{testRunId}). runType=test|integration|e2e; CLI/docs may say test | test-integration | test-e2e; public JSON uses runType only. Includes validation layer (machine/explain), certificate snapshot, optional integration pipeline results, capability E2Es, debug by reference, plural audit refs, developer summaries. Forward-compatible: minor reportVersion bumps may add fields.",
+  "description": "Canonical datasource-root test report (plans 362/365, 370.06). Public success shape for POST /api/v1/validation/run (and async poll GET /validation/run/{testRunId}). runType=test|integration|e2e. reportVersion semver on this envelope: additive optional fields (e.g. Issue conceptId, ruleId, stableCode, fix in 1.4.0) => minor bump; removed/renamed fields => major bump. Older clients must tolerate absent Issue traceability/fix fields; new clients should read them when present for YAML/hybrid rules.",
   "type": "object",
   "required": ["reportVersion", "datasourceKey", "systemKey", "runType", "status"],
   "properties": {
     "reportVersion": {
       "type": "string",
       "description": "Semver-style contract version for this envelope. Policy: additive fields => minor bump within same major; removed/renamed fields => major bump. Route migrations must cite target reportVersion.",
-      "example": "1.3.0"
+      "example": "1.4.0"
     },
     "runType": {
       "type": "string",
@@ -252,7 +252,7 @@
         "level": {
           "type": "string",
           "description": "Achieved certification tier when applicable.",
-          "enum": ["bronze", "silver", "gold"]
+          "enum": ["bronze", "silver", "gold", "platinum"]
         },
         "summary": {
           "type": "string",
@@ -388,6 +388,61 @@
         }
       }
     },
+    "FixInstruction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["step"],
+      "description": "One deterministic repair step (370.03 fixInstruction vocabulary).",
+      "properties": {
+        "step": {
+          "type": "string",
+          "enum": [
+            "locate_file",
+            "update_path",
+            "add_mapping",
+            "set_value",
+            "remove_value",
+            "add_item",
+            "remove_item",
+            "explain"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "description": "Brace tokens only in authored YAML: {datasource}, {systemKey}, {field}, {raw.*}."
+        },
+        "path": { "type": "string" },
+        "template": { "type": "string" },
+        "note": { "type": "string" }
+      }
+    },
+    "IssueFix": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "instructions"],
+      "description": "Structured remediation on Issue (370.06; aligned with rule YAML fix).",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "add_mapping",
+            "edit_schema",
+            "edit_exposure",
+            "edit_governance",
+            "edit_execution",
+            "generic"
+          ]
+        },
+        "instructions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/FixInstruction" }
+        },
+        "example": {
+          "description": "Optional structured or scalar example for authors/tooling."
+        }
+      }
+    },
     "Issue": {
       "type": "object",
       "required": ["message"],
@@ -395,7 +450,7 @@
       "properties": {
         "code": {
           "type": "string",
-          "description": "Stable code: DP-VAL-* (structural/config), DP-CIP-* (execution/CIP), DP-SEC-* (auth/RBAC/exposure), DP-CONN-* (REST/MCP/connectivity), DP-E2E-* (end-to-end live); warnings DP-*-Wnn. Mapped from engine errorCode in DatasourceTestRun builders.",
+          "description": "Stable code: DP-VAL-* (structural/config), DP-CIP-* (execution/CIP), DP-SEC-* (auth/RBAC/exposure), DP-CONN-* (REST/MCP/connectivity), DP-E2E-* (end-to-end live); warnings DP-*-Wnn. Prefer stableCode when present; otherwise mapped from engine errorCode.",
           "example": "DP-CIP-010"
         },
         "message": {
@@ -410,6 +465,29 @@
         "hint": {
           "type": "string",
           "description": "Remediation or next-step hint."
+        },
+        "conceptId": {
+          "type": "string",
+          "description": "Concept catalog id (370.02) for concept-first organization."
+        },
+        "ruleId": {
+          "type": "string",
+          "description": "YAML rule id when the finding came from the contract rule set.",
+          "example": "VAL-PIL-001"
+        },
+        "stableCode": {
+          "type": "string",
+          "description": "Frozen DP-* stable code from rule YAML.",
+          "example": "DP-VAL-097"
+        },
+        "ruleRefs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Legacy or supplemental rule references; prefer ruleId + stableCode for YAML rules."
+        },
+        "fix": {
+          "$ref": "#/$defs/IssueFix",
+          "description": "Structured fix instructions when the emitting rule supplies them."
         }
       }
     },
