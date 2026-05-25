@@ -18,7 +18,7 @@ The summary lists **two** Jest runs: first block is the default project (~294 su
 
 ## Environment
 
-`tests/setup.js` clears `AIFABRIX_HOME`, `AIFABRIX_WORK`, and `AIFABRIX_CONFIG` on each test unless `PRESERVE_AIFABRIX_TEST_ENV=true`. Secret and `admin-secrets.env` writes during Jest **refuse the live** `~/.aifabrix` tree (`assertWritableSecretsPathForTests`); mock homes (e.g. `/home/test/.aifabrix`) and tmpdirs remain allowed. Opt out of the guard with `ALLOW_AIFABRIX_TEST_WRITE_REAL_CONFIG=1`. Optional tmp sandbox helpers live in `tests/helpers/aifabrix-runtime-sandbox.js`. With `PRESERVE_AIFABRIX_TEST_ENV=true`, the runtime dir is backed up before the run and restored in `afterAll`.
+`tests/setup.js` clears `AIFABRIX_HOME`, `AIFABRIX_WORK`, and `AIFABRIX_CONFIG` on each test unless `PRESERVE_AIFABRIX_TEST_ENV=true`. Optional tmp sandbox: `initAifabrixJestSandbox()` in `tests/helpers/aifabrix-runtime-sandbox.js` (verified by `paths-jest-sandbox-integration.test.js` and `aifabrix-runtime-sandbox.test.js`). Secret and `admin-secrets.env` writes during Jest **refuse the live** `~/.aifabrix` tree (`assertWritableSecretsPathForTests`); mock homes (e.g. `/home/test/.aifabrix`) and tmpdirs remain allowed. Opt out of the guard with `ALLOW_AIFABRIX_TEST_WRITE_REAL_CONFIG=1`. With `PRESERVE_AIFABRIX_TEST_ENV=true`, the runtime dir is backed up before the run and restored in `afterAll` (`tests/helpers/aifabrix-runtime-backup.js`; round-trip in `aifabrix-runtime-backup.test.js`).
 
 ## Flaky / order-sensitive tests
 

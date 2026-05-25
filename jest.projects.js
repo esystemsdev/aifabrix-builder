@@ -309,7 +309,13 @@ const defaultProject = {
       'validate-batch\\.test\\.js',
       '/tests/helpers/aifabrix-runtime-sandbox.test.js',
       '\\\\tests\\\\helpers\\\\aifabrix-runtime-sandbox.test.js',
-      'helpers/aifabrix-runtime-sandbox\\.test\\.js'
+      'helpers/aifabrix-runtime-sandbox\\.test\\.js',
+      '/tests/helpers/aifabrix-runtime-backup.test.js',
+      '\\\\tests\\\\helpers\\\\aifabrix-runtime-backup.test.js',
+      'helpers/aifabrix-runtime-backup\\.test\\.js',
+      '/tests/lib/utils/paths-jest-sandbox-integration.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\paths-jest-sandbox-integration.test.js',
+      'paths-jest-sandbox-integration\\.test\\.js'
     ];
     if (process.env.INCLUDE_LOCAL_TESTS !== 'true') {
       patterns.push('/tests/local/');
@@ -453,6 +459,12 @@ const isolatedProjects = [
   ]),
   makeIsolatedProject('aifabrix-runtime-sandbox', [
     '**/tests/helpers/aifabrix-runtime-sandbox.test.js'
+  ]),
+  makeIsolatedProject('aifabrix-runtime-backup', [
+    '**/tests/helpers/aifabrix-runtime-backup.test.js'
+  ]),
+  makeIsolatedProject('paths-jest-sandbox-integration', [
+    '**/tests/lib/utils/paths-jest-sandbox-integration.test.js'
   ])
 ];
 

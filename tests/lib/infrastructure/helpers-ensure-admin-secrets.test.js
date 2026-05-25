@@ -79,6 +79,14 @@ describe('infrastructure/helpers ensureAdminSecrets', () => {
       'keycloak-admin-passwordKeyVault',
       'admin1234'
     );
+    expect(secretsEnsure.setSecretInStore).not.toHaveBeenCalledWith(
+      'postgres-passwordKeyVault',
+      expect.anything()
+    );
+    expect(secretsEnsure.setSecretInStore).not.toHaveBeenCalledWith(
+      'miso-controller-admin-passwordKeyVault',
+      expect.anything()
+    );
   });
 
   it('syncs catalog kv secrets when syncAdminKv is true (legacy)', async() => {
@@ -154,6 +162,14 @@ describe('infrastructure/helpers ensureAdminSecrets', () => {
     expect(secretsEnsure.setSecretInStore).toHaveBeenCalledWith(
       'keycloak-admin-passwordKeyVault',
       'kc-pass'
+    );
+    expect(secretsEnsure.setSecretInStore).not.toHaveBeenCalledWith(
+      'postgres-passwordKeyVault',
+      expect.anything()
+    );
+    expect(secretsEnsure.setSecretInStore).not.toHaveBeenCalledWith(
+      'miso-controller-admin-passwordKeyVault',
+      expect.anything()
     );
   });
 

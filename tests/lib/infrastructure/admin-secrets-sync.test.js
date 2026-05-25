@@ -40,5 +40,30 @@ describe('admin-secrets-sync', () => {
       expect.any(Function),
       expect.any(Function)
     );
+    expect(secretsEnsure.setSecretInStore).not.toHaveBeenCalledWith(
+      'postgres-passwordKeyVault',
+      expect.anything()
+    );
+    expect(secretsEnsure.setSecretInStore).not.toHaveBeenCalledWith(
+      'miso-controller-admin-passwordKeyVault',
+      expect.anything()
+    );
+  });
+
+  it('single bundle sets keycloak kv only, not legacy postgres/miso catalog keys', async() => {
+    await syncRequiredKvFromPasswordBundle({ mode: 'single', password: 'dev-one' });
+
+    expect(secretsEnsure.setSecretInStore).toHaveBeenCalledWith(
+      'keycloak-admin-passwordKeyVault',
+      'dev-one'
+    );
+    expect(secretsEnsure.setSecretInStore).not.toHaveBeenCalledWith(
+      'postgres-passwordKeyVault',
+      expect.anything()
+    );
+    expect(secretsEnsure.setSecretInStore).not.toHaveBeenCalledWith(
+      'miso-controller-admin-passwordKeyVault',
+      expect.anything()
+    );
   });
 });

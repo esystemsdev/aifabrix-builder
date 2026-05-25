@@ -55,4 +55,15 @@ describeSandbox('aifabrix-runtime-sandbox', () => {
     teardownAifabrixJestSandbox();
     expect(fs.existsSync(root)).toBe(false);
   });
+
+  it('getPrimaryUserSecretsLocalPath is under sandbox tmpdir when env is applied', () => {
+    const paths = require('../../lib/utils/paths');
+    const result = initAifabrixJestSandbox();
+    applyAifabrixJestSandboxEnv();
+    const secretsPath = paths.getPrimaryUserSecretsLocalPath();
+    expect(secretsPath).toContain('aifx-jest-');
+    expect(secretsPath).toBe(
+      path.join(path.dirname(result.configPath), 'secrets.local.yaml')
+    );
+  });
 });
