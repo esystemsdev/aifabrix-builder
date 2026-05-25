@@ -10,7 +10,26 @@
 
 const path = require('path');
 const os = require('os');
-const fsReal = require('../../lib/internal/fs-real-sync');
+
+/**
+ * Sync fs from tests/capture-real-fs.js only — never the Jest-mocked `fs` module.
+ * @returns {import('node:fs')}
+ */
+function sandboxFs() {
+  const snap =
+    typeof globalThis !== 'undefined' && globalThis.__AIFABRIX_NODE_FS_UNMOCKED__
+      ? globalThis.__AIFABRIX_NODE_FS_UNMOCKED__
+      : typeof global !== 'undefined' && global.__AIFABRIX_NODE_FS_UNMOCKED__
+        ? global.__AIFABRIX_NODE_FS_UNMOCKED__
+        : null;
+  if (snap) {
+    return snap;
+  }
+  if (typeof jest !== 'undefined' && typeof jest.requireActual === 'function') {
+    return jest.requireActual('node:fs');
+  }
+  return require('node:fs');
+}
 
 let sandboxRoot = null;
 let sandboxConfigPath = null;
@@ -30,13 +49,17 @@ function initAifabrixJestSandbox() {
   if (isPreserveFabrixTestEnv()) {
     return null;
   }
-  if (sandboxRoot && fsReal.existsSync(sandboxConfigPath)) {
+  const fs = sandboxFs();
+  if (sandboxRoot && sandboxConfigPath && fs.existsSync(sandboxConfigPath)) {
     applyAifabrixJestSandboxEnv();
     return { sandboxRoot, configPath: sandboxConfigPath };
   }
-  sandboxRoot = fsReal.mkdtempSync(path.join(os.tmpdir(), 'aifx-jest-'));
+  if (sandboxRoot) {
+    teardownAifabrixJestSandbox();
+  }
+  sandboxRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'aifx-jest-'));
   const configDir = path.join(sandboxRoot, '.aifabrix');
-  fsReal.mkdirSync(configDir, { recursive: true, mode: 0o700 });
+  fs.mkdirSync(configDir, { recursive: true, mode: 0o700 });
   sandboxConfigPath = path.join(configDir, 'config.yaml');
   const yaml = [
     'developer-id: 0',
@@ -46,8 +69,8 @@ function initAifabrixJestSandbox() {
     'redisCommander: true',
     'tlsEnabled: false'
   ].join('\n');
-  fsReal.writeFileSync(sandboxConfigPath, `${yaml}\n`, { mode: 0o600 });
-  fsReal.writeFileSync(path.join(configDir, 'secrets.local.yaml'), '{}\n', { mode: 0o600 });
+  fs.writeFileSync(sandboxConfigPath, `${yaml}\n`, { mode: 0o600 });
+  fs.writeFileSync(path.join(configDir, 'secrets.local.yaml'), '{}\n', { mode: 0o600 });
   applyAifabrixJestSandboxEnv();
   return { sandboxRoot, configPath: sandboxConfigPath };
 }
@@ -66,8 +89,9 @@ function applyAifabrixJestSandboxEnv() {
  */
 function teardownAifabrixJestSandbox() {
   if (!sandboxRoot) return;
+  const fs = sandboxFs();
   try {
-    fsReal.rmSync(sandboxRoot, { recursive: true, force: true });
+    fs.rmSync(sandboxRoot, { recursive: true, force: true });
   } catch {
     // ignore
   }
@@ -79,5 +103,6 @@ module.exports = {
   initAifabrixJestSandbox,
   applyAifabrixJestSandboxEnv,
   teardownAifabrixJestSandbox,
-  isPreserveFabrixTestEnv
+  isPreserveFabrixTestEnv,
+  sandboxFs
 };

@@ -306,7 +306,10 @@ const defaultProject = {
       '/tests/lib/protection/validate-batch.test.js',
       '\\\\tests\\\\lib\\\\protection\\\\validate-batch.test.js',
       'lib/protection/validate-batch.test.js',
-      'validate-batch\\.test\\.js'
+      'validate-batch\\.test\\.js',
+      '/tests/helpers/aifabrix-runtime-sandbox.test.js',
+      '\\\\tests\\\\helpers\\\\aifabrix-runtime-sandbox.test.js',
+      'helpers/aifabrix-runtime-sandbox\\.test\\.js'
     ];
     if (process.env.INCLUDE_LOCAL_TESTS !== 'true') {
       patterns.push('/tests/local/');
@@ -447,6 +450,9 @@ const isolatedProjects = [
   ]),
   makeIsolatedProject('protection-validate-batch', [
     '**/tests/lib/protection/validate-batch.test.js'
+  ]),
+  makeIsolatedProject('aifabrix-runtime-sandbox', [
+    '**/tests/helpers/aifabrix-runtime-sandbox.test.js'
   ])
 ];
 

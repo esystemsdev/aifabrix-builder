@@ -5,18 +5,24 @@
 'use strict';
 
 const path = require('path');
-const fsReal = require('../../lib/internal/fs-real-sync');
 
 const {
   initAifabrixJestSandbox,
   applyAifabrixJestSandboxEnv,
   teardownAifabrixJestSandbox,
-  isPreserveFabrixTestEnv
+  isPreserveFabrixTestEnv,
+  sandboxFs
 } = require('./aifabrix-runtime-sandbox');
 
 const describeSandbox = isPreserveFabrixTestEnv() ? describe.skip : describe;
 
 describeSandbox('aifabrix-runtime-sandbox', () => {
+  beforeEach(() => {
+    teardownAifabrixJestSandbox();
+    delete process.env.AIFABRIX_CONFIG;
+    delete process.env.AIFABRIX_HOME;
+  });
+
   afterEach(() => {
     teardownAifabrixJestSandbox();
     delete process.env.AIFABRIX_CONFIG;
@@ -24,11 +30,12 @@ describeSandbox('aifabrix-runtime-sandbox', () => {
   });
 
   it('creates config and secrets under tmpdir', () => {
+    const fs = sandboxFs();
     const result = initAifabrixJestSandbox();
     expect(result).not.toBeNull();
-    expect(fsReal.existsSync(result.configPath)).toBe(true);
+    expect(fs.existsSync(result.configPath)).toBe(true);
     const secretsPath = path.join(path.dirname(result.configPath), 'secrets.local.yaml');
-    expect(fsReal.existsSync(secretsPath)).toBe(true);
+    expect(fs.existsSync(secretsPath)).toBe(true);
     applyAifabrixJestSandboxEnv();
     expect(process.env.AIFABRIX_CONFIG).toBe(result.configPath);
     expect(process.env.AIFABRIX_HOME).toBe(result.sandboxRoot);
@@ -42,9 +49,10 @@ describeSandbox('aifabrix-runtime-sandbox', () => {
   });
 
   it('teardown removes sandbox root', () => {
+    const fs = sandboxFs();
     const result = initAifabrixJestSandbox();
     const root = result.sandboxRoot;
     teardownAifabrixJestSandbox();
-    expect(fsReal.existsSync(root)).toBe(false);
+    expect(fs.existsSync(root)).toBe(false);
   });
 });

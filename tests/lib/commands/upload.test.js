@@ -8,6 +8,9 @@
 
 const chalk = require('chalk');
 
+jest.mock('../../../lib/external-system/sync-deploy-manifest', () => ({
+  syncDeployJsonFromSources: jest.fn().mockResolvedValue('/tmp/my-hubspot-deploy.json')
+}));
 jest.mock('../../../lib/validation/validate', () => ({
   validateExternalSystemComplete: jest.fn()
 }));
@@ -81,6 +84,7 @@ const {
   resolveConfigurationValues
 } = require('../../../lib/utils/configuration-env-resolver');
 const { logDataplanePipelineWarning } = require('../../../lib/utils/dataplane-pipeline-warning');
+const { syncDeployJsonFromSources } = require('../../../lib/external-system/sync-deploy-manifest');
 
 describe('upload command', () => {
   const systemKey = 'my-hubspot';
@@ -122,6 +126,7 @@ describe('upload command', () => {
       await uploadExternalSystem(systemKey);
 
       expect(validateExternalSystemComplete).toHaveBeenCalledWith(systemKey, { type: 'external' });
+      expect(syncDeployJsonFromSources).toHaveBeenCalledWith(systemKey);
       expect(generateControllerManifest).toHaveBeenCalledWith(systemKey, { type: 'external' });
       expect(buildResolvedEnvMapForIntegration).toHaveBeenCalledWith(systemKey);
       expect(getDeploymentAuth).toHaveBeenCalled();
@@ -289,6 +294,7 @@ describe('upload command', () => {
       await uploadExternalSystem(systemKey, { dryRun: true });
 
       expect(validateExternalSystemComplete).toHaveBeenCalledWith(systemKey, { type: 'external' });
+      expect(syncDeployJsonFromSources).toHaveBeenCalledWith(systemKey);
       expect(generateControllerManifest).toHaveBeenCalledWith(systemKey, { type: 'external' });
       expect(uploadApplicationViaPipeline).not.toHaveBeenCalled();
       expect(logDataplanePipelineWarning).not.toHaveBeenCalled();
