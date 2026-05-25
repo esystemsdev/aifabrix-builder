@@ -261,6 +261,7 @@ describe('Pipeline API', () => {
           body: {
             validationScope: 'externalSystem',
             runType: 'test',
+            stage: 'readiness',
             systemIdOrKey: systemKey,
             includeDebug: true
           }
@@ -330,6 +331,7 @@ describe('Pipeline API', () => {
           body: {
             validationScope: 'externalDataSource',
             runType: 'test',
+            stage: 'readiness',
             systemIdOrKey: systemKey,
             payloadTemplate: testData.payloadTemplate,
             datasourceKey
