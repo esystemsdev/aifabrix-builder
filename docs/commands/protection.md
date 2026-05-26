@@ -115,6 +115,98 @@ Each file protects exactly one **datasource key** (`spec.datasourceKey`). The CL
 
 Grants use `dimensionKey` and `valueExpression`. Omit grant-level `valueType` when the catalog dimension is `static` or `dynamic`; set `valueType: static|dynamic` on the grant only when the dimension catalog mode is **both**.
 
+A manifest may define **multiple rules** on the same datasource. Each rule is evaluated **per synced record**; grants attach to the resolved principal (user or group). A user’s effective access is the **union** of dimension values from all groups they belong to.
+
+---
+
+## Common patterns
+
+### Country sales (one country per rep)
+
+The `country-sales` preset (and `--type country-sales`) scaffolds **one rule**: a **different group per country** on each company row.
+
+```json
+{
+  "key": "country-country-sales",
+  "principal": {
+    "type": "group",
+    "expression": "Sales {{metadata.country}} Users"
+  },
+  "grants": [
+    {
+      "dimensionKey": "country",
+      "valueExpression": "{{metadata.country}}"
+    }
+  ]
+}
+```
+
+| What happens | Meaning |
+| --- | --- |
+| Each synced company | Resolves a group from that row’s `metadata.country` (e.g. `Sales United States Users`). |
+| Grant on that group | Only that country value (e.g. `United States`). |
+| User in one sales group | Sees companies for **that country only**. |
+| User in several sales groups | Sees the **union** of those countries (multiple memberships). |
+
+Create matching groups in identity (or Entra sync) before upload — group names must match the resolved expression.
+
+### Sales Managers (cross-country / “all companies” in sync)
+
+For managers or admins who must see **every country** present in synced data, add a **second rule** with a **static** group name (no `{{…}}` in the principal). The same per-row country grant stacks **all** countries onto one group:
+
+```json
+{
+  "key": "sales-managers-all-countries",
+  "principal": {
+    "type": "group",
+    "expression": "Sales Managers"
+  },
+  "grants": [
+    {
+      "dimensionKey": "country",
+      "valueExpression": "{{metadata.country}}"
+    }
+  ]
+}
+```
+
+| What happens | Meaning |
+| --- | --- |
+| Each synced company | Grants `Sales Managers` the row’s country value. |
+| After sync | `Sales Managers` holds the **union** of every country seen on companies. |
+| User in `Sales Managers` only | Governed read/export can match **any** of those countries → effectively full visibility for synced data. |
+
+`protection create --type country-sales` does **not** add this rule — merge it into the manifest by hand (or maintain a two-rule file in `integration/.protection/`), then `protection validate` and `protection upload`.
+
+### Two rules together (typical HubSpot companies lab)
+
+```json
+"rules": [
+  {
+    "key": "country-country-sales",
+    "principal": {
+      "type": "group",
+      "expression": "Sales {{metadata.country}} Users"
+    },
+    "grants": [
+      { "dimensionKey": "country", "valueExpression": "{{metadata.country}}" }
+    ]
+  },
+  {
+    "key": "sales-managers-all-countries",
+    "principal": {
+      "type": "group",
+      "expression": "Sales Managers"
+    },
+    "grants": [
+      { "dimensionKey": "country", "valueExpression": "{{metadata.country}}" }
+    ]
+  }
+]
+```
+
+Reps stay country-isolated via the first rule; members of `Sales Managers` get cross-country access via the second without joining every `Sales … Users` group.
+
 ---
 
 ## Commands

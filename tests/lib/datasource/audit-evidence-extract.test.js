@@ -1,8 +1,15 @@
 /**
  * @fileoverview Tests for audit-evidence-extract
+ *
+ * Uses real schema/fallback reads via fs-real-sync in load-cip-capacity-display-config;
+ * edge-case temp schema files use node:fs so other suites' jest.mock('fs') cannot no-op writes.
  */
 
 'use strict';
+
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 
 const {
   extractAuditEvidenceContext,
@@ -10,22 +17,12 @@ const {
   correlationIdFromEnvelope,
   expectedOperationsFromEnvelope
 } = require('../../../lib/datasource/audit-evidence-extract');
-const loadCipConfig = require('../../../lib/utils/load-cip-capacity-display-config');
-const { clearCipCapacityDisplayConfigCacheForTests } = loadCipConfig;
-const fallbackCipConfig = require('../../../lib/schema/cip-capacity-display.fallback.json');
+const { clearCipCapacityDisplayConfigCacheForTests } = require('../../../lib/utils/load-cip-capacity-display-config');
 
 describe('audit-evidence-extract', () => {
   beforeEach(() => {
     delete process.env.AIFABRIX_EXTERNAL_DATASOURCE_SCHEMA;
     clearCipCapacityDisplayConfigCacheForTests();
-    jest.spyOn(loadCipConfig, 'getCipCapacityDisplayConfig').mockReturnValue({
-      standardOrder: fallbackCipConfig.standardOperationOrder,
-      aliases: fallbackCipConfig.displayAliases || { create: 'insert (create)' }
-    });
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
   });
   const sampleEnvelope = {
     datasourceKey: 'test-e2e-hubspot-companies',
@@ -86,10 +83,6 @@ describe('audit-evidence-extract', () => {
   });
 
   it('[EDGE] partial external schema still allows CRUD via fallback merge', () => {
-    jest.restoreAllMocks();
-    const fs = require('fs');
-    const os = require('os');
-    const path = require('path');
     const tmpSchema = path.join(os.tmpdir(), `partial-ext-ds-${Date.now()}.json`);
     fs.writeFileSync(
       tmpSchema,
