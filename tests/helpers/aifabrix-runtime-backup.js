@@ -15,15 +15,26 @@ const os = require('os');
 const RUNTIME_FILES = ['secrets.local.yaml', 'admin-secrets.env', 'urls.local.yaml'];
 
 /**
+ * True when configDir lives under the OS temp directory (Jest sandboxes must not be backed up).
+ *
+ * @param {string} configDir
+ * @returns {boolean}
+ */
+function isConfigDirUnderOsTmpdir(configDir) {
+  const resolved = path.resolve(configDir);
+  const tmp = path.resolve(os.tmpdir());
+  return resolved === tmp || resolved.startsWith(`${tmp}${path.sep}`);
+}
+
+/**
  * @param {string} configDir - Absolute path to .aifabrix directory
  * @returns {{ backupDir: string, files: string[] }}
  */
 function backupAifabrixRuntimeDir(configDir) {
-  const resolved = path.resolve(configDir);
-  const tmp = path.resolve(os.tmpdir());
-  if (resolved === tmp || resolved.startsWith(`${tmp}${path.sep}`)) {
+  if (isConfigDirUnderOsTmpdir(configDir)) {
     return { backupDir: null, files: [] };
   }
+  const resolved = path.resolve(configDir);
   const backupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aifx-backup-'));
   const copied = [];
   for (const name of RUNTIME_FILES) {
@@ -61,6 +72,7 @@ function restoreAifabrixRuntimeDir(configDir, snapshot) {
 
 module.exports = {
   RUNTIME_FILES,
+  isConfigDirUnderOsTmpdir,
   backupAifabrixRuntimeDir,
   restoreAifabrixRuntimeDir
 };

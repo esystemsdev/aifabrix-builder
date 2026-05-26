@@ -10,9 +10,32 @@ const os = require('os');
 
 const {
   RUNTIME_FILES,
+  isConfigDirUnderOsTmpdir,
   backupAifabrixRuntimeDir,
   restoreAifabrixRuntimeDir
 } = require('./aifabrix-runtime-backup');
+
+/** Linux CI often mounts the repo under os.tmpdir(); use /var/tmp for a stable non-tmp fixture. */
+const VAR_TMP_FIXTURE_ROOT = path.join('/var', 'tmp', 'aifx-runtime-backup-fixture');
+
+/**
+ * Directory that simulates ~/.aifabrix but is guaranteed outside os.tmpdir().
+ *
+ * @returns {string}
+ */
+function resolveSimLiveDirForBackupTest() {
+  const candidates = [
+    path.join(__dirname, 'fixture-live-runtime', `pid-${process.pid}`),
+    path.join(global.PROJECT_ROOT || path.resolve(__dirname, '..', '..'), 'tests', 'helpers', 'fixture-live-runtime', `pid-${process.pid}`)
+  ];
+  for (const candidate of candidates) {
+    const resolved = path.resolve(candidate);
+    if (!isConfigDirUnderOsTmpdir(resolved)) {
+      return resolved;
+    }
+  }
+  return path.join(VAR_TMP_FIXTURE_ROOT, String(process.pid));
+}
 
 describe('aifabrix-runtime-backup', () => {
   /** Simulated operator config dir (not under os.tmpdir — backup must run). */
@@ -21,7 +44,7 @@ describe('aifabrix-runtime-backup', () => {
   let originalBytes;
 
   beforeEach(() => {
-    simLiveDir = path.join(__dirname, 'fixture-live-runtime', `pid-${process.pid}`);
+    simLiveDir = resolveSimLiveDirForBackupTest();
     fs.mkdirSync(simLiveDir, { recursive: true, mode: 0o700 });
     originalBytes = {};
     for (const name of RUNTIME_FILES) {
@@ -47,6 +70,7 @@ describe('aifabrix-runtime-backup', () => {
   });
 
   it('restore returns runtime files byte-equal to pre-mutation backup', () => {
+    expect(isConfigDirUnderOsTmpdir(simLiveDir)).toBe(false);
     const snap = backupAifabrixRuntimeDir(simLiveDir);
     expect(snap.backupDir).not.toBeNull();
     expect(snap.files.sort()).toEqual([...RUNTIME_FILES].sort());

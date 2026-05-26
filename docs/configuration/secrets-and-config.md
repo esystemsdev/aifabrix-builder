@@ -131,13 +131,13 @@ The Builder parses **`remote-server`** as a URL and uses its **hostname** for **
 
 - Secrets live in that file (e.g. `~/.aifabrix/secrets.local.yaml` or a team path).
 - **`aifabrix resolve`**, run, and build read from the merge rules for your app.
-- **`aifabrix secret list|set|remove|remove-all`** target that file when operating on shared keys.
+- **`aifabrix secret list|get|set|remove|remove-all`** target that file when operating on shared keys (`secret get <key> --shared --exists` for script checks).
 - Missing keys can be auto-created on **`aifabrix up-infra`**, app create, **`aifabrix resolve --force`**, integration create; **`--shared`** reads/writes the same file. Details: [Utilities](../commands/utilities.md).
 
 ### `https://` URL
 
 - Shared secrets are served by the **remote API** (cert-authenticated).
-- **`secret list|set|remove|remove-all --shared`** call the API.
+- **`secret list|get|set|remove|remove-all --shared`** call the API or shared file.
 - Shared values are **not stored on disk** on the developer machine; they are fetched at resolution time for `.env` generation.
 - Local (non-shared) keys can still use the user / project file.
 - Shared **set/remove** typically needs **admin** or **secret-manager** on the remote service.

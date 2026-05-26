@@ -67,7 +67,7 @@ This will generate the .env file without running validation checks afterward.
 **Missing `kv://` secrets:** The CLI lists each missing reference and suggests:
 
 1. **Comment or delete** the matching line in `env.template` when the key is not required by your system file (common after switching from OAuth to apikey — run `aifabrix repair <systemKey>` to comment stale OAuth lines).
-2. **Store the value:** `aifabrix secret set <systemKey>/<name> "<your-value>"` (for example `aifabrix secret set hubspot-demo/apiKey "<token>"`).
+2. **Store the value:** `aifabrix secret set <systemKey>/<name> "<your-value>"` (add `--shared` when using a team secrets file). Check first with `aifabrix secret get <systemKey>/<name> --shared --exists`.
 
 Use `--force` only when you intend to auto-generate placeholder keys in the secrets file (catalog-driven apps).
 
@@ -405,7 +405,7 @@ Encrypted secrets are automatically decrypted when loaded by `aifabrix resolve`,
 
 ## aifabrix secret
 
-**Scope:** The commands in this section manage **developer-cycle** secret files and shared dev APIs (`aifabrix secret list|set|remove`, **`BASH_*`**, etc.). They do **not** define where **Azure production** runtime secrets live—in production, secrets are in **Azure Key Vault** and bound through deployment configuration; see [Secrets and config – Production vs developer cycle](../configuration/secrets-and-config.md#production-azure-key-vault-vs-developer-cycle).
+**Scope:** The commands in this section manage **developer-cycle** secret files and shared dev APIs (`aifabrix secret list|get|set|remove`, **`BASH_*`**, etc.). They do **not** define where **Azure production** runtime secrets live—in production, secrets are in **Azure Key Vault** and bound through deployment configuration; see [Secrets and config – Production vs developer cycle](../configuration/secrets-and-config.md#production-azure-key-vault-vs-developer-cycle).
 
 Manage secrets: **local** (user file `~/.aifabrix/secrets.local.yaml`, optional **ancestor** `.aifabrix/secrets.local.yaml` files on the path from the app to the workspace root, and app-level files the merge loader picks up) and **shared** (the path or `http(s)://` URL in **`aifabrix-secrets`** in `config.yaml`). When `aifabrix-secrets` is an **http(s)://** URL, shared secrets are served by the remote API (typically **Builder Server**); shared values are **never stored on disk** on the developer machine and are fetched when secrets are merged. When it is a file path, that file is the shared store on disk (for example a team path on a shared drive).
 
@@ -428,6 +428,36 @@ aifabrix secret list
 # List shared secrets (file path: from project file; URL: from API, cert required)
 aifabrix secret list --shared
 ```
+
+<a id="aifabrix-secret-get"></a>
+### aifabrix secret get
+
+Read one secret by key. **Default:** local user `secrets.local.yaml` only (same target as `secret set` without `--shared`). **`--shared`:** team store from `aifabrix-secrets` only (same as `secret set --shared`).
+
+**Usage:**
+```bash
+# Local file check (fails if key is only in the shared team file)
+aifabrix secret get hubspot-demo/apiKey --exists
+
+# Team/shared store check
+aifabrix secret get hubspot-demo/apiKey --shared --exists
+
+# Print decrypted value from local file
+aifabrix secret get myapp/clientSecret
+
+# JSON from shared store
+aifabrix secret get hubspot-demo/apiKey --shared --json
+```
+
+**Options:**
+- *(default)* — Local user secrets file only (`secrets.local.yaml` under resolved aifabrix home)
+- `--shared` — Shared store only (`aifabrix-secrets` file path or https API)
+- `--exists` — Exit **0** when the key is present and non-empty; print nothing (for scripts and CI)
+- `--json` — Output `{ "key", "exists", "value" }`
+
+**Key format:** Use the path **without** `kv://` (e.g. `hubspot-demo/apiKey`, not `kv://hubspot-demo/apiKey`).
+
+**Exit codes:** **0** when the secret is found (and non-empty for `--exists`); **1** when missing, empty, or decrypt fails.
 
 <a id="aifabrix-secret-set"></a>
 ### aifabrix secret set

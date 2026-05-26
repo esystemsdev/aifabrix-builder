@@ -36,6 +36,7 @@ const {
   backupAifabrixRuntimeDir,
   restoreAifabrixRuntimeDir
 } = require('./helpers/aifabrix-runtime-backup');
+const { clearCipCapacityDisplayConfigCacheForTests } = require('../lib/utils/load-cip-capacity-display-config');
 
 /** @type {{ backupDir: string|null, files: string[] }|null} */
 let preserveEnvBackup = null;
@@ -310,6 +311,7 @@ global.testUtils = {
 // 3. Most tests don't need module cache reset - they just need mock state reset
 beforeEach(() => {
   clearFabrixPathEnvForTests();
+  clearCipCapacityDisplayConfigCacheForTests();
 
   // Reset fetch mock to default implementation
   if (global.fetch && typeof global.fetch.mockClear === 'function') {

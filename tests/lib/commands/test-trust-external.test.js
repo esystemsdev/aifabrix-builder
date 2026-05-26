@@ -24,8 +24,12 @@ jest.mock('../../../lib/external-system/test-auth', () => ({
     dataplaneUrl: 'http://localhost:3201'
   })
 }));
+jest.mock('../../../lib/core/config', () => ({
+  getConfig: jest.fn().mockResolvedValue({ 'developer-id': '0', environments: {} })
+}));
 
 const logger = require('../../../lib/utils/logger');
+const { getConfig } = require('../../../lib/core/config');
 const { uploadExternalSystem } = require('../../../lib/commands/upload');
 const { runDatasourceAgentTrust } = require('../../../lib/datasource/agent-trust-run');
 const { resolveExternalIntegrationContext } = require('../../../lib/commands/test-e2e-external');
@@ -75,6 +79,7 @@ describe('test-trust-external', () => {
   it('skips upload when noSync is true', async() => {
     await runTestTrustForExternalSystem('hubspot-demo', { noSync: true });
     expect(uploadExternalSystem).not.toHaveBeenCalled();
+    expect(getConfig).toHaveBeenCalled();
     const { setupIntegrationTestAuth } = require('../../../lib/external-system/test-auth');
     expect(setupIntegrationTestAuth).toHaveBeenCalled();
   });

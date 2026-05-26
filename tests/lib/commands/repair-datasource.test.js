@@ -291,6 +291,42 @@ describe('repair-datasource', () => {
       expect(parsed.testPayload.expectedResult).toEqual({ email: '', count: 0 });
       expect(changes.some(c => c.includes('testPayload'))).toBe(true);
     });
+
+    it('uses metadataSchema types when attribute type is omitted (HubSpot-style)', () => {
+      const changes = [];
+      const parsed = {
+        metadataSchema: {
+          type: 'object',
+          properties: {
+            archived: { type: 'boolean' },
+            archivedAt: { type: 'string', format: 'date-time' },
+            associations: { type: 'object', additionalProperties: true },
+            createdAt: { type: 'string', format: 'date-time' },
+            id: { type: 'string' },
+            properties: { type: 'object', additionalProperties: true },
+            propertiesWithHistory: { type: 'object', additionalProperties: true },
+            updatedAt: { type: 'string', format: 'date-time' },
+            name: { type: 'string' }
+          }
+        },
+        fieldMappings: {
+          attributes: {
+            id: { expression: '{{raw.id}}' },
+            name: { expression: '{{raw.properties.name}}' },
+            archived: { expression: '{{raw.archived}}' },
+            associations: { expression: '{{raw.associations}}' },
+            properties: { expression: '{{raw.properties}}' }
+          }
+        }
+      };
+      repairTestPayload(parsed, changes);
+      expect(parsed.testPayload.payloadTemplate.archived).toBe(false);
+      expect(parsed.testPayload.payloadTemplate.associations).toEqual({});
+      expect(parsed.testPayload.payloadTemplate.properties).toEqual(
+        expect.objectContaining({ name: expect.any(String) })
+      );
+      expect(parsed.testPayload.expectedResult.archived).toBe(false);
+    });
   });
 
   describe('repairDatasourceFile', () => {

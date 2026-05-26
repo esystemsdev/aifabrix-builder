@@ -73,6 +73,13 @@ jest.mock('../../../lib/utils/app-config-resolver', () => ({
 jest.mock('../../../lib/utils/config-format', () => ({
   loadConfigFile: jest.fn()
 }));
+jest.mock('../../../lib/commands/upload', () => ({
+  uploadExternalSystem: jest.fn().mockResolvedValue({
+    authConfig: { token: 'test-token' },
+    dataplaneUrl: 'http://dataplane:8080',
+    environment: 'dev'
+  })
+}));
 
 // Note: We don't mock the validators or display - we test the actual implementations
 
@@ -376,7 +383,10 @@ describe('External System Test Module', () => {
   });
 
   describe('testExternalSystemIntegration', () => {
+    const { uploadExternalSystem } = require('../../../lib/commands/upload');
+
     beforeEach(() => {
+      uploadExternalSystem.mockClear();
       getDataplaneUrl.mockResolvedValue('http://dataplane:8080');
       getDeploymentAuth.mockResolvedValue({
         type: 'bearer',
@@ -418,6 +428,10 @@ describe('External System Test Module', () => {
 
       expect(results.success).toBe(true);
       expect(results.datasourceResults.length).toBeGreaterThan(0);
+      expect(uploadExternalSystem).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ minimal: true })
+      );
       expect(authenticatedApiCall).toHaveBeenCalledWith(
         expect.stringContaining('/api/v1/validation/run'),
         expect.any(Object),
@@ -515,6 +529,18 @@ describe('External System Test Module', () => {
       const skipped = results.datasourceResults.find(r => r.skipped);
       expect(skipped).toBeDefined();
       expect(skipped.reason).toContain('No test payload');
+    });
+
+    it('should skip upload when noSync is set', async() => {
+      authenticatedApiCall.mockResolvedValue({
+        success: true,
+        data: { data: { success: true, validationResults: { isValid: true } } }
+      });
+
+      const { testExternalSystemIntegration } = require('../../../lib/external-system/test');
+      await testExternalSystemIntegration(appName, { noSync: true });
+
+      expect(uploadExternalSystem).not.toHaveBeenCalled();
     });
 
     it('should throw error when authentication is missing', async() => {

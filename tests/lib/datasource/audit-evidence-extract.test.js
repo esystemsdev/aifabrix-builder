@@ -10,8 +10,12 @@ const {
   correlationIdFromEnvelope,
   expectedOperationsFromEnvelope
 } = require('../../../lib/datasource/audit-evidence-extract');
+const { clearCipCapacityDisplayConfigCacheForTests } = require('../../../lib/utils/load-cip-capacity-display-config');
 
 describe('audit-evidence-extract', () => {
+  beforeEach(() => {
+    clearCipCapacityDisplayConfigCacheForTests();
+  });
   const sampleEnvelope = {
     datasourceKey: 'test-e2e-hubspot-companies',
     testRunId: 'run-corr-abc',
@@ -68,6 +72,41 @@ describe('audit-evidence-extract', () => {
       ]
     });
     expect(ops).toEqual(['create']);
+  });
+
+  it('[EDGE] partial external schema still allows CRUD via fallback merge', () => {
+    const fs = require('fs');
+    const os = require('os');
+    const path = require('path');
+    const tmpSchema = path.join(os.tmpdir(), `partial-ext-ds-${Date.now()}.json`);
+    fs.writeFileSync(
+      tmpSchema,
+      JSON.stringify({
+        $defs: {
+          cipDefinition: {
+            properties: {
+              operations: { properties: { list: {} } }
+            }
+          }
+        }
+      })
+    );
+    process.env.AIFABRIX_EXTERNAL_DATASOURCE_SCHEMA = tmpSchema;
+    clearCipCapacityDisplayConfigCacheForTests();
+    try {
+      const ops = expectedOperationsFromEnvelope({
+        capabilities: [
+          { key: 'mapping', status: 'ok' },
+          { key: 'create', status: 'ok' },
+          { key: 'list', status: 'skipped' }
+        ]
+      });
+      expect(ops).toEqual(['create']);
+    } finally {
+      delete process.env.AIFABRIX_EXTERNAL_DATASOURCE_SCHEMA;
+      clearCipCapacityDisplayConfigCacheForTests();
+      fs.unlinkSync(tmpSchema);
+    }
   });
 
   it('cipOperationsFromDebugEnvelope parses capacity keys without product aliases', () => {

@@ -128,6 +128,7 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix secure`](utilities.md#aifabrix-secure) - Encrypt secrets.local.yaml at rest (ISO 27001)
   - [`aifabrix secret`](utilities.md#aifabrix-secret) - User and shared secrets: list, set, remove, set-secrets-file, validate (`aifabrix secret --help`; `--shared` + HTTPS: `BASH_<NAME>` keys → `<NAME>` exported in terminal, e.g. `NPM_TOKEN`)
     - [`aifabrix secret list`](utilities.md#aifabrix-secret-list) / [`secret list --shared`](utilities.md#aifabrix-secret-list) - List local or shared secrets
+    - [`aifabrix secret get <key>`](utilities.md#aifabrix-secret-get) / `--shared` / `--exists` - Get one secret (script check with `--exists`)
     - [`aifabrix secret set <key> <value>`](utilities.md#aifabrix-secret-set) / `--shared` - Set secret (local or shared)
     - [`aifabrix secret remove <key>`](utilities.md#aifabrix-secret-remove) / `--shared` - Remove secret (local or shared)
     - [`aifabrix secret remove-all`](utilities.md#aifabrix-secret-remove-all) / `--shared` / `--yes` - Remove all secrets (confirmation unless `--yes`)
