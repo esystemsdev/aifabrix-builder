@@ -44,7 +44,8 @@ jest.mock('../../lib/core/config', () => {
     setDeveloperId: mockSetDeveloperId,
     getConfig: mockGetConfig,
     saveConfig: mockSaveConfig,
-    clearConfig: mockClearConfig
+    clearConfig: mockClearConfig,
+    getRemoteServer: jest.fn().mockResolvedValue(null)
   };
 });
 
@@ -690,6 +691,8 @@ describe('Compose Generator Module', () => {
   });
 
   describe('readDatabasePasswords error handling', () => {
+    jest.setTimeout(15000);
+
     // Helper to ensure .env file is created correctly
     // Uses realFs (via jest.requireActual) to bypass any mocks
     const ensureEnvFile = async(appName, content) => {

@@ -748,8 +748,8 @@ environments:
       expect(call).toBeDefined();
       const written = call[1];
       expect(written).toContain('DATABASE_URL=admin123');
-      // With dev-id 1 mocked: local host port = listen + 10 + 100
-      expect(written).toMatch(/^PORT=3110$/m);
+      // With dev-id 1 mocked: local host port = listen + 100
+      expect(written).toMatch(/^PORT=3100$/m);
       expect(result).toBe(path.join(builderPath, '.env'));
     });
 
@@ -2304,6 +2304,94 @@ environments:
       expect(written).not.toContain('existing-jwt-secret-keep');
       expect(written).not.toContain('existing-redis');
     });
+
+    it('should append new template keys when existing .env omits them', async() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath === builderEnvPath || (String(filePath).includes('builder') && String(filePath).endsWith('.env'))) {
+          return true;
+        }
+        if (
+          filePath.includes('env.template') ||
+          filePath.includes('secrets.yaml') ||
+          filePath.includes('application.yaml') ||
+          filePath.includes('env-config')
+        ) {
+          return true;
+        }
+        return false;
+      });
+      const existingEnv = 'PORT=3000\n';
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === builderEnvPath || (String(filePath).includes('builder') && String(filePath).endsWith('.env'))) {
+          return existingEnv;
+        }
+        if (filePath.includes('env.template')) {
+          return 'PORT=3000\nNEW_FROM_TEMPLATE=kv://jwt-secretKeyVault\n';
+        }
+        if (filePath.includes('secrets.yaml') || filePath.includes('secrets.local.yaml')) {
+          return 'jwt-secretKeyVault: "new-key-value"\n';
+        }
+        if (filePath.includes('application.yaml')) {
+          return 'port: 3000';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return 'environments:\n  docker: {}\n  local: {}';
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName, undefined, 'docker');
+
+      const envWrite = fs.writeFileSync.mock.calls.find(call => String(call[0]).endsWith('.env'));
+      expect(envWrite).toBeDefined();
+      const written = envWrite[1];
+      expect(written).toMatch(/^NEW_FROM_TEMPLATE=new-key-value$/m);
+      expect(written).toMatch(/^PORT=3000$/m);
+    });
+
+    it('should replace entire .env when freshEnv is true (no merge with existing)', async() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath === builderEnvPath || (String(filePath).includes('builder') && String(filePath).endsWith('.env'))) {
+          return true;
+        }
+        if (
+          filePath.includes('env.template') ||
+          filePath.includes('secrets.yaml') ||
+          filePath.includes('application.yaml') ||
+          filePath.includes('env-config')
+        ) {
+          return true;
+        }
+        return false;
+      });
+      const existingEnv = 'PORT=3000\nSTALE_ONLY=keep-me\n';
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === builderEnvPath || (String(filePath).includes('builder') && String(filePath).endsWith('.env'))) {
+          return existingEnv;
+        }
+        if (filePath.includes('env.template')) {
+          return 'PORT=3000\nJWT_SECRET=kv://jwt-secretKeyVault\n';
+        }
+        if (filePath.includes('secrets.yaml') || filePath.includes('secrets.local.yaml')) {
+          return 'jwt-secretKeyVault: "fresh-jwt"\n';
+        }
+        if (filePath.includes('application.yaml')) {
+          return 'port: 3000';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return 'environments:\n  docker: {}\n  local: {}';
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName, undefined, 'docker', false, { freshEnv: true });
+
+      const envWrite = fs.writeFileSync.mock.calls.find(call => String(call[0]).endsWith('.env'));
+      expect(envWrite).toBeDefined();
+      const written = envWrite[1];
+      expect(written).toContain('JWT_SECRET=fresh-jwt');
+      expect(written).not.toContain('STALE_ONLY=keep-me');
+    });
   });
 
   describe('generateEnvFile - port resolution for docker environment', () => {
@@ -3557,7 +3645,7 @@ port: 4000
       const writeCalls = fs.writeFileSync.mock.calls;
       const outputCall = writeCalls.find(call => call[0] === outputPath);
       expect(outputCall).toBeDefined();
-      expect(outputCall[1]).toContain('PORT=4010');
+      expect(outputCall[1]).toContain('PORT=4000');
     });
 
     it('should derive PORT from manifest port for envOutputPath copy (dev id 0)', async() => {
@@ -3616,7 +3704,7 @@ environments:
       const outputPath = path.resolve(builderPath, '../app/.env');
       const outputCall = writeCalls.find(call => call[0] === outputPath);
       expect(outputCall).toBeDefined();
-      expect(outputCall[1]).toContain('PORT=5010');
+      expect(outputCall[1]).toContain('PORT=5000');
     });
 
     it('should not copy when envOutputPath is null', async() => {

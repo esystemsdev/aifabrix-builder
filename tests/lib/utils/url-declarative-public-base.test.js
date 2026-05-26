@@ -160,7 +160,7 @@ describe('computePublicUrlBaseString declarativePublicUrlsUseLocalhost (scheme)'
         declarativeCurrentAppKey: 'miso-controller',
         declarativePublicUrlsUseLocalhost: true
       })
-    ).toBe('http://localhost:3210');
+    ).toBe('http://localhost:3200');
   });
 
   it('uses http for localhost when infraTlsEnabled true (loopback never https)', () => {
@@ -180,7 +180,7 @@ describe('computePublicUrlBaseString declarativePublicUrlsUseLocalhost (scheme)'
         declarativeCurrentAppKey: 'miso-controller',
         declarativePublicUrlsUseLocalhost: true
       })
-    ).toBe('http://localhost:3210');
+    ).toBe('http://localhost:3200');
   });
 });
 
@@ -280,11 +280,11 @@ describe('computePublicUrlBaseString (Traefik front-door host authority)', () =>
         declarativeTargetAppKey: 'miso-controller',
         declarativeCurrentAppKey: 'miso-controller'
       })
-    ).toBe('http://localhost:3610');
+    ).toBe('http://localhost:3600');
   });
 });
 
-describe('resolveHostPortForDeclarativePublic (local +10 on current app only)', () => {
+describe('resolveHostPortForDeclarativePublic (local port + devId×100 only)', () => {
   it('applies localHostPort math when target matches current app', () => {
     expect(
       resolveHostPortForDeclarativePublic({
@@ -294,7 +294,7 @@ describe('resolveHostPortForDeclarativePublic (local +10 on current app only)', 
         declarativeTargetAppKey: 'miso-controller',
         declarativeCurrentAppKey: 'miso-controller'
       })
-    ).toBe(3110);
+    ).toBe(3100);
   });
 
   it('uses publishedHostPort math for cross-app targets', () => {

@@ -3098,7 +3098,7 @@ describe('CLI Commands', () => {
 
         config.getDeveloperId.mockResolvedValue('1');
         config.getCurrentEnvironment.mockResolvedValue('dev');
-        config.getControllerUrl.mockResolvedValue('http://localhost:3610');
+        config.getControllerUrl.mockResolvedValue('http://localhost:3600');
         config.getAifabrixSecretsPath.mockResolvedValue('/workspace/aifabrix-miso/builder/secrets.local.yaml');
         devConfig.getDevPorts.mockReturnValue({
           app: 3100,
@@ -3122,7 +3122,7 @@ describe('CLI Commands', () => {
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('TLS/SSL', 'OFF 🕐'));
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Environment', 'dev'));
         expect(logger.log).toHaveBeenCalledWith(
-          paddedDevRow('Controller', 'http://localhost:3610')
+          paddedDevRow('Controller', 'http://localhost:3600')
         );
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Format', EM));
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Scoped resources', 'off (default)'));

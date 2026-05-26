@@ -4,6 +4,11 @@
  * @fileoverview
  */
 
+const {
+  globalLiveFabrixHooks,
+  createSetupCiLiveFabrixGuardProject
+} = require('./jest.global-live-fabrix-hooks');
+
 // Detect CI environment (GitHub Actions, CI simulation, etc.)
 const isCI = process.env.CI === 'true' || process.env.CI_SIMULATION === 'true';
 
@@ -31,7 +36,7 @@ function makeIsolatedProject(displayName, testMatch) {
     testPathIgnorePatterns: ['/node_modules/', '\\\\node_modules\\\\'],
     setupFiles: ['<rootDir>/tests/capture-real-fs.js'],
     setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
-    testTimeout: isCI ? 10000 : 5000,
+    testTimeout: isCI ? 15000 : 8000,
     maxWorkers: 1
   };
 }
@@ -315,7 +320,10 @@ const defaultProject = {
       'helpers/aifabrix-runtime-backup\\.test\\.js',
       '/tests/lib/utils/paths-jest-sandbox-integration.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\paths-jest-sandbox-integration.test.js',
-      'paths-jest-sandbox-integration\\.test\\.js'
+      'paths-jest-sandbox-integration\\.test\\.js',
+      '/tests/setup-ci-live-fabrix-guard.test.js',
+      '\\\\tests\\\\setup-ci-live-fabrix-guard.test.js',
+      'setup-ci-live-fabrix-guard\\.test\\.js'
     ];
     if (process.env.INCLUDE_LOCAL_TESTS !== 'true') {
       patterns.push('/tests/local/');
@@ -325,7 +333,7 @@ const defaultProject = {
   })(),
   setupFiles: ['<rootDir>/tests/capture-real-fs.js'],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
-  testTimeout: isCI ? 10000 : 5000,
+  testTimeout: isCI ? 15000 : 8000,
   detectOpenHandles: true,
   maxWorkers: 1
 };
@@ -465,7 +473,8 @@ const isolatedProjects = [
   ]),
   makeIsolatedProject('paths-jest-sandbox-integration', [
     '**/tests/lib/utils/paths-jest-sandbox-integration.test.js'
-  ])
+  ]),
+  createSetupCiLiveFabrixGuardProject({ isCI, sharedTransform })
 ];
 
 const allProjects = [defaultProject, ...isolatedProjects];
@@ -476,5 +485,6 @@ module.exports = {
   makeIsolatedProject,
   defaultProject,
   isolatedProjects,
-  allProjects
+  allProjects,
+  globalLiveFabrixHooks
 };

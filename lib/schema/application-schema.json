@@ -34,7 +34,7 @@
         "version": "1.4.0",
         "date": "2026-04-06T00:00:00Z",
         "changes": [
-          "Removed build.localPort: local workstation PORT and localhost URL rewriting use the root-level manifest port only, with local host port = port + 10 + developerId*100 (developer id 0 → port+10). Docker published host port remains port + developerId*100.",
+          "Removed build.localPort: local workstation PORT and localhost URL rewriting use the root-level manifest port only, with host port = port + developerId*100 (developer id 0 → port). Same formula for Docker publish and aifabrix run.",
           "Migration: delete build.localPort from application.yaml; set or keep port as the single listen/container port. Use url://public, url://internal, or url://<app>-public|internal in env.template for declarative URLs (resolved after kv://)."
         ],
         "breaking": true

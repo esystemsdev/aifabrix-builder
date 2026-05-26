@@ -39,10 +39,11 @@ describe('declarative-url-ports', () => {
   });
 
   describe('localHostPort', () => {
-    it('adds 10 + devId*100 to listen port', () => {
-      expect(localHostPort(3000, 0)).toBe(3010);
-      expect(localHostPort(3000, 1)).toBe(3110);
-      expect(localHostPort(4000, 1)).toBe(4110);
+    it('matches publishedHostPort (port + devId*100)', () => {
+      expect(localHostPort(3000, 0)).toBe(3000);
+      expect(localHostPort(3000, 1)).toBe(3100);
+      expect(localHostPort(4000, 1)).toBe(4100);
+      expect(localHostPort(8082, 6)).toBe(8682);
     });
   });
 });

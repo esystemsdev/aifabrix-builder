@@ -7,9 +7,12 @@
 const os = require('os');
 const path = require('path');
 
+const fs = require('fs');
+
 const {
   isAllowedTestWritePath,
   assertWritableSecretsPathForTests,
+  getLiveFabrixConfigDirCandidates,
   ALLOW_ENV
 } = require('../../../lib/utils/aifabrix-test-runtime-guard');
 
@@ -57,5 +60,28 @@ describe('aifabrix-test-runtime-guard', () => {
     process.env[ALLOW_ENV] = '1';
     const p = path.join(os.homedir(), '.aifabrix', 'secrets.local.yaml');
     expect(() => assertWritableSecretsPathForTests(p)).not.toThrow();
+  });
+
+  it('treats symlinked ~/.aifabrix and /workspace/.aifabrix as the same live tree', () => {
+    const homeSecrets = path.join(os.homedir(), '.aifabrix', 'secrets.local.yaml');
+    const workspaceSecrets = '/workspace/.aifabrix/secrets.local.yaml';
+    if (!fs.existsSync(homeSecrets) || !fs.existsSync(workspaceSecrets)) {
+      return;
+    }
+    let homeReal;
+    let workspaceReal;
+    try {
+      homeReal = fs.realpathSync(homeSecrets);
+      workspaceReal = fs.realpathSync(workspaceSecrets);
+    } catch {
+      return;
+    }
+    if (homeReal !== workspaceReal) {
+      return;
+    }
+    const dirs = getLiveFabrixConfigDirCandidates();
+    expect(dirs).toHaveLength(1);
+    expect(() => assertWritableSecretsPathForTests(homeSecrets)).toThrow(/Refusing to write secrets/);
+    expect(() => assertWritableSecretsPathForTests(workspaceSecrets)).toThrow(/Refusing to write secrets/);
   });
 });

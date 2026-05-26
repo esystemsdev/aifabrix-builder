@@ -108,14 +108,14 @@ describe('Auth Config Commands', () => {
       getConfig.mockResolvedValue({
         device: {
           'http://localhost:3600': { token: 'a', expiresAt: '2099-01-01T00:00:00.000Z' },
-          'http://localhost:3610': { token: 'b', expiresAt: '2099-01-01T00:00:00.000Z' }
+          'http://localhost:3700': { token: 'b', expiresAt: '2099-01-01T00:00:00.000Z' }
         }
       });
       setControllerUrl.mockResolvedValue();
 
-      await handleAuthConfig({ setController: 'http://localhost:3610' });
+      await handleAuthConfig({ setController: 'http://localhost:3600' });
 
-      expect(setControllerUrl).toHaveBeenCalledWith('http://localhost:3610');
+      expect(setControllerUrl).toHaveBeenCalledWith('http://localhost:3600');
       expect(logger.log).toHaveBeenCalled();
     });
   });

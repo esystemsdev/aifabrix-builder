@@ -37,6 +37,11 @@ jest.mock('../../../lib/external-system/generator', () => ({
 }));
 
 const { clearProjectRootCache } = require('../../../lib/utils/paths');
+const {
+  initAifabrixJestSandbox,
+  applyAifabrixJestSandboxEnv,
+  teardownAifabrixJestSandbox
+} = require('../../helpers/aifabrix-runtime-sandbox');
 const app = require('../../../lib/app');
 const templateValidator = require('../../../lib/validation/template');
 const externalGenerator = require('../../../lib/external-system/generator');
@@ -59,7 +64,16 @@ describe('Application Module', () => {
   let originalAifabrixBuilderDir;
   let originalAifabrixWork;
 
+  beforeAll(() => {
+    initAifabrixJestSandbox();
+  });
+
+  afterAll(() => {
+    teardownAifabrixJestSandbox();
+  });
+
   beforeEach(() => {
+    applyAifabrixJestSandboxEnv();
     // Create temporary directory for tests
     tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-test-'));
     originalCwd = process.cwd();

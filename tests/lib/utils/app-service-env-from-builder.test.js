@@ -66,8 +66,8 @@ describe('app-service-env-from-builder', () => {
       expect(o.docker.DATAPLANE_PORT).toBe(9999);
       expect(o.docker.DATAPLANE_PUBLIC_PORT).toBe(9999);
       expect(o.local.DATAPLANE_HOST).toBe('localhost');
-      expect(o.local.DATAPLANE_PORT).toBe(10009);
-      expect(o.local.DATAPLANE_PUBLIC_PORT).toBe(10009);
+      expect(o.local.DATAPLANE_PORT).toBe(9999);
+      expect(o.local.DATAPLANE_PUBLIC_PORT).toBe(9999);
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }
@@ -122,7 +122,7 @@ describe('app-service-env-from-builder', () => {
 
       const o = buildAppServiceEnvOverlay(fakeNpmPackage);
       expect(o.docker.DATAPLANE_PORT).toBe(3001);
-      expect(o.local.DATAPLANE_PORT).toBe(3011);
+      expect(o.local.DATAPLANE_PORT).toBe(3001);
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }

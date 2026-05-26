@@ -164,6 +164,14 @@ describe('Controller URL Utility', () => {
 
       expect(url).toBe('https://config.controller.com');
     });
+
+    it('should preserve explicit localhost port from config (e.g. 3610)', async() => {
+      config.getControllerUrl = jest.fn().mockResolvedValue('http://localhost:3610');
+
+      const url = await resolveControllerUrl();
+
+      expect(url).toBe('http://localhost:3610');
+    });
   });
 
   describe('getControllerUrlFromLoggedInUser', () => {
@@ -217,16 +225,16 @@ describe('Controller URL Utility', () => {
 
     it('should prefer device key matching config.controller when multiple tokens exist', async() => {
       config.getConfig.mockResolvedValue({
-        controller: 'http://localhost:3610',
+        controller: 'http://localhost:3600',
         device: {
           'http://localhost:3600': { token: 'a', expiresAt: '2099-01-01T00:00:00.000Z' },
-          'http://localhost:3610': { token: 'b', expiresAt: '2099-01-01T00:00:00.000Z' }
+          'http://localhost:3700': { token: 'b', expiresAt: '2099-01-01T00:00:00.000Z' }
         }
       });
 
       const url = await getControllerUrlFromLoggedInUser();
 
-      expect(url).toBe('http://localhost:3610');
+      expect(url).toBe('http://localhost:3600');
     });
 
     it('should return null when multiple device entries and no config.controller device match', async() => {
@@ -234,7 +242,7 @@ describe('Controller URL Utility', () => {
         controller: 'http://localhost:9999',
         device: {
           'http://localhost:3600': { token: 'a' },
-          'http://localhost:3610': { token: 'b' }
+          'http://localhost:3700': { token: 'b' }
         }
       });
 

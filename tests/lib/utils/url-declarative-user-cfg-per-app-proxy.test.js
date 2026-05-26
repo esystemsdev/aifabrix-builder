@@ -18,6 +18,7 @@ const os = require('os');
 jest.mock('../../../lib/utils/paths', () => ({
   ...jest.requireActual('../../../lib/utils/paths'),
   getAifabrixHome: jest.fn(),
+  getConfigDirForPaths: jest.fn(),
   getProjectRoot: jest.fn(),
   getBuilderRoot: jest.fn()
 }));
@@ -36,6 +37,7 @@ describe('expandDeclarativeUrlsInEnvContent userCfg per-target proxy', () => {
     fakeProject = path.join(tmp, 'proj');
     fs.mkdirSync(fakeHome, { recursive: true });
     pathsUtil.getAifabrixHome.mockReturnValue(fakeHome);
+    pathsUtil.getConfigDirForPaths.mockReturnValue(fakeHome);
     pathsUtil.getProjectRoot.mockReturnValue(fakeProject);
     pathsUtil.getBuilderRoot.mockReturnValue(path.join(fakeProject, 'builder'));
   });
@@ -129,7 +131,7 @@ KEYCLOAK_SERVER_URL=url://keycloak-public
       infraTlsEnabled: false,
       userCfg
     });
-    expect(out).toMatch(/^MISO_WEB_SERVER_URL=http:\/\/localhost:3210/m);
+    expect(out).toMatch(/^MISO_WEB_SERVER_URL=http:\/\/localhost:3200/m);
     expect(out).not.toContain('builder02.local');
   });
 });

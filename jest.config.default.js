@@ -3,8 +3,9 @@
  * @fileoverview
  */
 
-const { defaultProject } = require('./jest.projects');
+const { defaultProject, globalLiveFabrixHooks } = require('./jest.projects');
 
 module.exports = {
+  ...globalLiveFabrixHooks,
   projects: [defaultProject]
 };

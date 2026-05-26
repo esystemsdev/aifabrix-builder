@@ -25,6 +25,42 @@ const config = require('../../../lib/core/config');
 const api = require('../../../lib/utils/api');
 const { resetRefreshWarnedUrlsForTesting } = require('../../../lib/utils/token-manager-messages');
 
+const CREDENTIAL_ENV_KEYS = [
+  'MISO_CLIENTID',
+  'MISO_CLIENTSECRET',
+  'MISO_CLIENT_ID',
+  'MISO_CLIENT_SECRET',
+  'CLIENTID',
+  'CLIENTSECRET',
+  'CLIENT_ID',
+  'CLIENT_SECRET',
+  'AIFABRIX_DEPLOYMENT_AUTH',
+  'DP',
+  'DATAPLANE_URL'
+];
+
+/** @type {Record<string, string|undefined>} */
+let credentialEnvSnapshot = {};
+
+function isolateCredentialEnv() {
+  credentialEnvSnapshot = {};
+  for (const key of CREDENTIAL_ENV_KEYS) {
+    credentialEnvSnapshot[key] = process.env[key];
+    delete process.env[key];
+  }
+}
+
+function restoreCredentialEnv() {
+  for (const key of CREDENTIAL_ENV_KEYS) {
+    if (credentialEnvSnapshot[key] === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = credentialEnvSnapshot[key];
+    }
+  }
+  credentialEnvSnapshot = {};
+}
+
 describe('Token Manager Module', () => {
   const mockHomeDir = '/mock/home';
   const mockSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
@@ -46,6 +82,14 @@ describe('Token Manager Module', () => {
   });
 
   describe('loadClientCredentials', () => {
+    beforeEach(() => {
+      isolateCredentialEnv();
+    });
+
+    afterEach(() => {
+      restoreCredentialEnv();
+    });
+
     it('should load credentials from secrets.local.yaml', async() => {
       const mockSecrets = {
         'keycloak-client-idKeyVault': 'test-client-id',
@@ -287,6 +331,14 @@ describe('Token Manager Module', () => {
   });
 
   describe('refreshClientToken', () => {
+    beforeEach(() => {
+      isolateCredentialEnv();
+    });
+
+    afterEach(() => {
+      restoreCredentialEnv();
+    });
+
     it('should refresh token using credentials from secrets.local.yaml', async() => {
       const mockSecrets = {
         'keycloak-client-idKeyVault': 'test-client-id',
@@ -1008,6 +1060,11 @@ describe('Token Manager Module', () => {
 
     beforeEach(() => {
       jest.clearAllMocks();
+      isolateCredentialEnv();
+    });
+
+    afterEach(() => {
+      restoreCredentialEnv();
     });
 
     afterEach(() => {
@@ -1160,11 +1217,70 @@ describe('Token Manager Module', () => {
         tokenManager.getDeploymentAuth(controllerUrl, environment, '')
       ).rejects.toThrow('App name is required');
     });
+
+    it('should skip device token when AIFABRIX_DEPLOYMENT_AUTH=client-credentials', async() => {
+      const prev = process.env.AIFABRIX_DEPLOYMENT_AUTH;
+      process.env.AIFABRIX_DEPLOYMENT_AUTH = 'client-credentials';
+      config.getDeviceToken.mockResolvedValue({
+        token: 'device-token-should-not-be-used',
+        controller: controllerUrl,
+        refreshToken: 'r',
+        expiresAt: new Date(Date.now() + 3600000).toISOString()
+      });
+      config.isTokenExpired.mockReturnValue(false);
+      config.shouldRefreshToken.mockReturnValue(false);
+      config.getClientToken.mockResolvedValue({
+        token: 'client-token-only',
+        controller: controllerUrl,
+        expiresAt: new Date(Date.now() + 3600000).toISOString()
+      });
+
+      const result = await tokenManager.getDeploymentAuth(controllerUrl, environment, appName);
+
+      expect(result.type).toBe('client-token');
+      expect(result.token).toBe('client-token-only');
+      process.env.AIFABRIX_DEPLOYMENT_AUTH = prev;
+    });
+
+    it('should load MISO_CLIENTID from env when secrets missing', async() => {
+      const prevId = process.env.MISO_CLIENTID;
+      const prevSecret = process.env.MISO_CLIENTSECRET;
+      process.env.MISO_CLIENTID = 'env-client-id';
+      process.env.MISO_CLIENTSECRET = 'env-client-secret';
+      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      config.getDeviceToken.mockResolvedValue(null);
+      config.getClientToken.mockResolvedValue(null);
+      api.makeApiCall.mockResolvedValue({
+        success: true,
+        data: { token: 'from-miso-env', expiresIn: 86400 }
+      });
+      config.saveClientToken.mockResolvedValue(undefined);
+
+      const result = await tokenManager.getDeploymentAuth(
+        controllerUrl,
+        environment,
+        'test-protection',
+        { deploymentAuth: 'client-credentials' }
+      );
+
+      expect(result.type).toBe('client-token');
+      expect(result.token).toBe('from-miso-env');
+      process.env.MISO_CLIENTID = prevId;
+      process.env.MISO_CLIENTSECRET = prevSecret;
+    });
   });
 
   describe('extractClientCredentials', () => {
     const appKey = 'keycloak';
     const envKey = 'miso';
+
+    beforeEach(() => {
+      isolateCredentialEnv();
+    });
+
+    afterEach(() => {
+      restoreCredentialEnv();
+    });
 
     it('should return credentials when type is client-credentials and both provided', async() => {
       const authConfig = {

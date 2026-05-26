@@ -189,7 +189,7 @@ describe('external-system-readiness-core', () => {
 
   describe('formatDataplaneFetchReason', () => {
     it('detects connection refused', () => {
-      const r = formatDataplaneFetchReason(new Error('connect ECONNREFUSED'), 'http://localhost:3111');
+      const r = formatDataplaneFetchReason(new Error('connect ECONNREFUSED'), 'http://localhost:3101');
       expect(r).toContain('connection refused');
     });
   });

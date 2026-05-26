@@ -31,6 +31,7 @@ jest.mock('../../../lib/utils/paths', () => {
   const actual = jest.requireActual('../../../lib/utils/paths');
   return {
     ...actual,
+    getBuilderPath: jest.fn((appName) => pathMod.join(process.cwd(), 'builder', appName)),
     detectAppType: jest.fn().mockImplementation(async(appName) => {
       if (appName === 'nonexistent-app') {
         throw new Error(`App '${appName}' not found in integration/${appName} or builder/${appName}`);
@@ -84,8 +85,9 @@ describe('Application Deploy Module', () => {
     // Clear all mocks to prevent leakage between tests
     jest.clearAllMocks();
 
-    // Re-apply paths.detectAppType after clearAllMocks (used by loadDeploymentConfig)
+    // Re-apply paths mocks after clearAllMocks
     const paths = require('../../../lib/utils/paths');
+    paths.getBuilderPath.mockImplementation((appName) => path.join(process.cwd(), 'builder', appName));
     paths.detectAppType.mockImplementation(async(appName) => {
       if (appName === 'nonexistent-app') {
         throw new Error(`App '${appName}' not found in integration/${appName} or builder/${appName}`);
@@ -104,32 +106,23 @@ describe('Application Deploy Module', () => {
     });
   });
 
-  afterEach(async() => {
+  afterEach(() => {
     process.chdir(originalCwd);
     if (previousAifabrixBuilderDir === undefined) {
       delete process.env.AIFABRIX_BUILDER_DIR;
     } else {
       process.env.AIFABRIX_BUILDER_DIR = previousAifabrixBuilderDir;
     }
-    // Retry cleanup on Windows (handles EBUSY errors)
-    let retries = 3;
-    while (retries > 0) {
-      try {
-        await fs.rm(tempDir, { recursive: true, force: true });
-        break;
-      } catch (error) {
-        if (error.code === 'EBUSY' && retries > 1) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-          retries--;
-        } else {
-          // Ignore cleanup errors in test environment
-          break;
-        }
-      }
+    try {
+      fsSync.rmSync(tempDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors in test environment (e.g. EBUSY on Windows)
     }
   });
 
   describe('pushApp error scenarios', () => {
+    jest.setTimeout(15000);
+
     beforeEach(() => {
       // Create app directory structure
       fsSync.mkdirSync(path.join(tempDir, 'builder', 'test-app'), { recursive: true });

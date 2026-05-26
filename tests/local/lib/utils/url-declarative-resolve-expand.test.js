@@ -187,8 +187,8 @@ API_URL=url://public
       remoteServer: null,
       developerIdRaw: 1
     });
-    // localHostPort(4000, 1) = 4110; no front-door pattern without traefik + enabled
-    expect(out).toContain('API_URL=http://localhost:4110');
+    // localHostPort(4000, 1) = 4100; no front-door pattern without traefik + enabled
+    expect(out).toContain('API_URL=http://localhost:4100');
   });
 
   it('resolves url://other-public from registry after refresh', async() => {
@@ -492,7 +492,7 @@ KINT=url://keycloak-internal
     expect(m.KINT).toBe(m.KPUB);
   });
 
-  it('local cross-app uses dev*100 only (+10 on current app only)', async() => {
+  it('local cross-app uses dev*100 only (port + devId×100 only)', async() => {
     writeApp(
       'keycloak',
       `port: 8082
@@ -525,7 +525,7 @@ KC=url://keycloak-public
       }
     );
     const m = parseSimpleEnvMap(out);
-    expect(m.CUR).toBe('http://localhost:3110');
+    expect(m.CUR).toBe('http://localhost:3100');
     expect(m.KC).toBe('http://localhost:8182');
   });
 

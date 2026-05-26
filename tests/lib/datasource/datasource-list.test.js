@@ -231,7 +231,7 @@ describe('Datasource List Module', () => {
         token: 'test-token',
         controller: 'http://localhost:3010'
       };
-      const mockDataplaneUrl = 'http://localhost:3111';
+      const mockDataplaneUrl = 'http://localhost:3101';
       const mockResponse = {
         success: true,
         data: {
@@ -335,7 +335,7 @@ describe('Datasource List Module', () => {
       getConfig.mockResolvedValue(mockConfig);
       resolveEnvironment.mockResolvedValue('dev');
       getOrRefreshDeviceToken.mockResolvedValue(mockToken);
-      resolveDataplaneUrl.mockResolvedValue('http://localhost:3111');
+      resolveDataplaneUrl.mockResolvedValue('http://localhost:3101');
       listDatasourcesFromDataplane.mockResolvedValue(mockResponse);
       formatApiError.mockReturnValue('API Error');
 
@@ -361,7 +361,7 @@ describe('Datasource List Module', () => {
         success: true,
         data: { data: [] }
       };
-      const mockDataplaneUrl = 'http://localhost:3111';
+      const mockDataplaneUrl = 'http://localhost:3101';
 
       getConfig.mockResolvedValue(mockConfig);
       resolveEnvironment.mockResolvedValue('dev');
@@ -406,14 +406,14 @@ describe('Datasource List Module', () => {
       getConfig.mockResolvedValue(mockConfig);
       resolveEnvironment.mockResolvedValue('dev');
       getOrRefreshDeviceToken.mockResolvedValue(mockToken);
-      resolveDataplaneUrl.mockResolvedValue('http://localhost:3111');
+      resolveDataplaneUrl.mockResolvedValue('http://localhost:3101');
       listDatasourcesFromDataplane.mockResolvedValue(mockResponse);
 
       const { listDatasources } = require('../../../lib/datasource/list');
       await listDatasources({ keyPrefix: 'hub' });
 
       expect(listDatasourcesFromDataplane).toHaveBeenCalledWith(
-        'http://localhost:3111',
+        'http://localhost:3101',
         expect.any(Object),
         { page: 1, pageSize: 100, filter: 'key:like:hub%' }
       );
@@ -459,7 +459,7 @@ describe('Datasource List Module', () => {
       getConfig.mockResolvedValue(mockConfig);
       resolveEnvironment.mockResolvedValue('dev');
       getOrRefreshDeviceToken.mockResolvedValue(mockToken);
-      resolveDataplaneUrl.mockResolvedValue('http://localhost:3111');
+      resolveDataplaneUrl.mockResolvedValue('http://localhost:3101');
       listDatasourcesFromDataplane
         .mockResolvedValueOnce(page1)
         .mockResolvedValueOnce(page2);
@@ -470,13 +470,13 @@ describe('Datasource List Module', () => {
       expect(listDatasourcesFromDataplane).toHaveBeenCalledTimes(2);
       expect(listDatasourcesFromDataplane).toHaveBeenNthCalledWith(
         1,
-        'http://localhost:3111',
+        'http://localhost:3101',
         expect.any(Object),
         { page: 1, pageSize: 100 }
       );
       expect(listDatasourcesFromDataplane).toHaveBeenNthCalledWith(
         2,
-        'http://localhost:3111',
+        'http://localhost:3101',
         expect.any(Object),
         { page: 2, pageSize: 100 }
       );

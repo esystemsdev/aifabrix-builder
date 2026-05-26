@@ -14,6 +14,9 @@ jest.mock('../../../lib/commands/wizard-dataplane');
 describe('Dataplane Resolver', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    delete process.env.AIFABRIX_DEPLOYMENT_AUTH;
+    delete process.env.DP;
+    delete process.env.DATAPLANE_URL;
   });
 
   describe('resolveDataplaneUrl', () => {
@@ -33,6 +36,20 @@ describe('Dataplane Resolver', () => {
         { token: 'test-token' },
         {}
       );
+    });
+
+    it('should use DP from env when AIFABRIX_DEPLOYMENT_AUTH=client-credentials', async() => {
+      process.env.AIFABRIX_DEPLOYMENT_AUTH = 'client-credentials';
+      process.env.DP = 'http://localhost:3611';
+
+      const result = await resolveDataplaneUrl(
+        'https://controller.example.com',
+        'dev',
+        { type: 'client-token', token: 't' }
+      );
+
+      expect(result).toBe('http://localhost:3611');
+      expect(discoverDataplaneUrl).not.toHaveBeenCalled();
     });
 
     it('should re-throw errors from discovery', async() => {

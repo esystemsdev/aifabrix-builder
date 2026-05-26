@@ -460,15 +460,15 @@ describe('app-list', () => {
           }
         }
       });
-      normalizeControllerUrl.mockReturnValue('http://localhost:3110');
+      normalizeControllerUrl.mockReturnValue('http://localhost:3100');
       getOrRefreshDeviceToken.mockResolvedValue(null); // No token for provided URL
 
       await listApplications({
         environment: 'dev',
-        controller: 'http://localhost:3110'
+        controller: 'http://localhost:3100'
       });
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('No authentication token found for controller: http://localhost:3110'));
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('No authentication token found for controller: http://localhost:3100'));
       expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Please login to this controller using: aifabrix login'));
       expect(process.exit).toHaveBeenCalledWith(1);
       // Should NOT try to use other controllers

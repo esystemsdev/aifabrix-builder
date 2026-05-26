@@ -42,7 +42,7 @@ describe('computePublicUrlBaseString declarativePublicUrlsUseLocalhost', () => {
       declarativeCurrentAppKey: 'miso-controller',
       declarativePublicUrlsUseLocalhost: true
     });
-    expect(base).toBe('http://localhost:3210');
+    expect(base).toBe('http://localhost:3200');
   });
 
   it('uses localhost + published port for cross-app token when flag is true (local profile, no +10 on sibling)', () => {

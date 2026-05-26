@@ -11,12 +11,35 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { getLiveFabrixConfigDirCandidates } = require('../../lib/utils/aifabrix-test-runtime-guard');
 
 const RUNTIME_FILES = ['secrets.local.yaml', 'admin-secrets.env', 'urls.local.yaml'];
 
 /**
  * True when configDir lives under the OS temp directory (Jest sandboxes must not be backed up).
  *
+ * @param {string} configDir
+ * @returns {boolean}
+ */
+/**
+ * Operator config dirs to protect during Jest (dedupes symlinked ~/.aifabrix).
+ *
+ * @returns {string[]}
+ */
+function discoverLiveFabrixRuntimeConfigDirs() {
+  return getLiveFabrixConfigDirCandidates().filter(dir => {
+    if (isConfigDirUnderOsTmpdir(dir)) {
+      return false;
+    }
+    try {
+      return fs.existsSync(dir);
+    } catch {
+      return false;
+    }
+  });
+}
+
+/**
  * @param {string} configDir
  * @returns {boolean}
  */
@@ -72,6 +95,7 @@ function restoreAifabrixRuntimeDir(configDir, snapshot) {
 
 module.exports = {
   RUNTIME_FILES,
+  discoverLiveFabrixRuntimeConfigDirs,
   isConfigDirUnderOsTmpdir,
   backupAifabrixRuntimeDir,
   restoreAifabrixRuntimeDir

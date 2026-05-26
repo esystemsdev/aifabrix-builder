@@ -34,11 +34,16 @@ describe('infra-env-defaults', () => {
   });
 
   it('getDefaultEnvConfig merges infra + app for docker and local', () => {
-    const cfg = getDefaultEnvConfig();
-    expect(cfg.environments.docker.DB_HOST).toBe('postgres');
-    expect(cfg.environments.docker.DATAPLANE_HOST).toBe('dataplane');
-    expect(cfg.environments.local.DB_HOST).toBe('localhost');
-    expect(cfg.environments.local.DATAPLANE_PORT).toBe(3011);
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'aifb-infra-defaults-empty-'));
+    try {
+      const cfg = getDefaultEnvConfig(tmp);
+      expect(cfg.environments.docker.DB_HOST).toBe('postgres');
+      expect(cfg.environments.docker.DATAPLANE_HOST).toBe('dataplane');
+      expect(cfg.environments.local.DB_HOST).toBe('localhost');
+      expect(cfg.environments.local.DATAPLANE_PORT).toBe(3011);
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
   });
 
   it('local infra is separate from local app offsets', () => {
@@ -58,7 +63,7 @@ describe('infra-env-defaults', () => {
       );
       const cfg = getDefaultEnvConfig(tmp);
       expect(cfg.environments.docker.DATAPLANE_PUBLIC_PORT).toBe(7777);
-      expect(cfg.environments.local.DATAPLANE_PORT).toBe(7787);
+      expect(cfg.environments.local.DATAPLANE_PORT).toBe(7777);
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }

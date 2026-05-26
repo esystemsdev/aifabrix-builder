@@ -33,10 +33,24 @@ echo "Temp Directory: $TEMP_DIR"
 echo "Test Project: $TEST_PROJECT_DIR"
 echo ""
 
+# Backup live ~/.aifabrix (host) before tests; restored even when Jest is killed by timeout.
+restore_live_fabrix_runtime() {
+    if [ -f "$PROJECT_ROOT/tests/scripts/live-fabrix-backup-cli.js" ]; then
+        node "$PROJECT_ROOT/tests/scripts/live-fabrix-backup-cli.js" restore 2>/dev/null || true
+    fi
+}
+
+backup_live_fabrix_runtime() {
+    if [ -f "$PROJECT_ROOT/tests/scripts/live-fabrix-backup-cli.js" ]; then
+        node "$PROJECT_ROOT/tests/scripts/live-fabrix-backup-cli.js" backup 2>/dev/null || true
+    fi
+}
+
 # Function to cleanup on exit
 cleanup() {
     echo ""
     echo -e "${YELLOW}Cleaning up...${NC}"
+    restore_live_fabrix_runtime
     if [ -d "$TEMP_DIR" ]; then
         rm -rf "$TEMP_DIR"
     fi
@@ -173,6 +187,7 @@ echo ""
 # Step 4: Run tests
 echo -e "${YELLOW}[4/5] Running tests...${NC}"
 echo "  (This may take a few minutes...)"
+backup_live_fabrix_runtime
 # Set CI_SIMULATION environment variable so tests know they're in CI
 export CI_SIMULATION=true
 export CI=true

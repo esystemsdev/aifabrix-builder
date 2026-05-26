@@ -368,7 +368,7 @@ describe('External System Test Authentication Module', () => {
 
       const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
       const { resolveEnvironment } = require('../../../lib/core/config');
-      resolveControllerUrl.mockResolvedValueOnce('http://localhost:3610');
+      resolveControllerUrl.mockResolvedValueOnce('http://localhost:3600');
       resolveEnvironment.mockResolvedValueOnce('dev');
 
       const mockAuthConfig = { token: 'test-token' };

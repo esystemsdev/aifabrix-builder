@@ -10,6 +10,7 @@ const os = require('os');
 
 const {
   RUNTIME_FILES,
+  discoverLiveFabrixRuntimeConfigDirs,
   isConfigDirUnderOsTmpdir,
   backupAifabrixRuntimeDir,
   restoreAifabrixRuntimeDir
@@ -60,6 +61,13 @@ describe('aifabrix-runtime-backup', () => {
     } catch {
       // ignore
     }
+  });
+
+  it('discoverLiveFabrixRuntimeConfigDirs excludes tmp sandboxes', () => {
+    const tmpConfig = fs.mkdtempSync(path.join(os.tmpdir(), 'aifx-jest-'));
+    const dirs = discoverLiveFabrixRuntimeConfigDirs();
+    expect(dirs.some(d => d === tmpConfig || d.startsWith(`${tmpConfig}${path.sep}`))).toBe(false);
+    fs.rmSync(tmpConfig, { recursive: true, force: true });
   });
 
   it('skips backup when config dir is under os.tmpdir', () => {

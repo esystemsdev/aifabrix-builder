@@ -54,8 +54,15 @@ aifabrix resolve myapp --skip-validation
 ```
 This will generate the .env file without running validation checks afterward.
 
+**Full replace (no merge with existing `.env`):**
+```bash
+aifabrix resolve dataplane --fresh
+```
+Writes the complete resolved file from `env.template` to `<appPath>/.env` and `build.envOutputPath` (when set), without merging into an existing `.env`. Use after adding many new variables to `env.template`, or when a normal resolve did not pick up new lines. Same effect as deleting the `.env` files first, then running resolve.
+
 **Flags:**
 - `-f, --force` - Generate missing secret keys in secrets file
+- `--fresh` - Replace `.env` from template (no merge with existing `.env` or `envOutputPath`)
 - `--skip-validation` - Skip file validation after generating .env
 
 **Output:** When the app is in **integration** with **env-only** (only `env.template`, no application config file), `.env` is written to `integration/<systemKey>/.env`. When the app has full config (builder or integration with application config) and `build.envOutputPath` is set, `.env` is written to that path; otherwise behaviour is as documented for run/build (e.g. temp or run-only).

@@ -97,7 +97,7 @@ describe('log-viewer', () => {
       formatLogContent({
         request: {
           sourceIdOrKey: 'test-e2e-sharepoint-documents',
-          dataplaneUrl: 'http://localhost:3111'
+          dataplaneUrl: 'http://localhost:3101'
         },
         response: {
           success: true,

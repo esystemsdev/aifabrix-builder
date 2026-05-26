@@ -32,6 +32,7 @@ describe('resolveDeclarativeShowUrlsForApp', () => {
     fs.mkdirSync(fakeHome, { recursive: true });
     pathSpies = [
       jest.spyOn(pathsUtil, 'getAifabrixHome').mockReturnValue(fakeHome),
+      jest.spyOn(pathsUtil, 'getConfigDirForPaths').mockReturnValue(fakeHome),
       jest.spyOn(pathsUtil, 'getProjectRoot').mockReturnValue(fakeProject),
       jest.spyOn(pathsUtil, 'getBuilderRoot').mockReturnValue(path.join(fakeProject, 'builder'))
     ];

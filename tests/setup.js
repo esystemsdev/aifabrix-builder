@@ -29,13 +29,12 @@ const ORIGINAL_CWD = process.cwd();
 // This ensures templates can be found even when tests change process.cwd()
 const path = require('path');
 const fs = require('fs');
+const { isPreserveFabrixTestEnv } = require('./helpers/aifabrix-runtime-sandbox');
+const { backupAifabrixRuntimeDir, restoreAifabrixRuntimeDir } = require('./helpers/aifabrix-runtime-backup');
 const {
-  isPreserveFabrixTestEnv
-} = require('./helpers/aifabrix-runtime-sandbox');
-const {
-  backupAifabrixRuntimeDir,
-  restoreAifabrixRuntimeDir
-} = require('./helpers/aifabrix-runtime-backup');
+  isLiveFabrixConfigPath,
+  assertWritableSecretsPathForTests
+} = require('../lib/utils/aifabrix-test-runtime-guard');
 const { clearCipCapacityDisplayConfigCacheForTests } = require('../lib/utils/load-cip-capacity-display-config');
 
 /** @type {{ backupDir: string|null, files: string[] }|null} */
@@ -73,6 +72,83 @@ if (isPreserveFabrixTestEnv()) {
   if (configPath && fs.existsSync(configPath)) {
     preserveEnvBackup = backupAifabrixRuntimeDir(path.dirname(configPath));
   }
+}
+
+function normalizeFsPathForGuard(filePath) {
+  if (typeof filePath !== 'string' || filePath.length === 0) {
+    return '';
+  }
+  return path.isAbsolute(filePath) ? path.resolve(filePath) : path.resolve(process.cwd(), filePath);
+}
+
+function assertLiveFabrixPathWritableDuringJest(filePath) {
+  if (process.env.JEST_WORKER_ID === undefined) {
+    return;
+  }
+  const normalized = normalizeFsPathForGuard(filePath);
+  if (!normalized || !isLiveFabrixConfigPath(normalized)) {
+    return;
+  }
+  assertWritableSecretsPathForTests(normalized);
+}
+
+function wrapUnmockedFsWriteGuard() {
+  const snap =
+    typeof globalThis !== 'undefined' && globalThis.__AIFABRIX_NODE_FS_UNMOCKED__
+      ? globalThis.__AIFABRIX_NODE_FS_UNMOCKED__
+      : typeof global !== 'undefined' && global.__AIFABRIX_NODE_FS_UNMOCKED__
+        ? global.__AIFABRIX_NODE_FS_UNMOCKED__
+        : null;
+  if (!snap || snap.__AIFABRIX_WRITE_GUARD_WRAPPED__) {
+    return;
+  }
+  const originalWriteFileSync = snap.writeFileSync;
+  const originalRmSync = snap.rmSync;
+  const originalUnlinkSync = snap.unlinkSync;
+  const originalRenameSync = snap.renameSync;
+  snap.writeFileSync = (filePath, ...args) => {
+    assertLiveFabrixPathWritableDuringJest(filePath);
+    return originalWriteFileSync(filePath, ...args);
+  };
+  if (typeof originalRmSync === 'function') {
+    snap.rmSync = (filePath, ...args) => {
+      assertLiveFabrixPathWritableDuringJest(filePath);
+      return originalRmSync(filePath, ...args);
+    };
+  }
+  if (typeof originalUnlinkSync === 'function') {
+    snap.unlinkSync = (filePath) => {
+      assertLiveFabrixPathWritableDuringJest(filePath);
+      return originalUnlinkSync(filePath);
+    };
+  }
+  if (typeof originalRenameSync === 'function') {
+    snap.renameSync = (fromPath, toPath) => {
+      assertLiveFabrixPathWritableDuringJest(fromPath);
+      assertLiveFabrixPathWritableDuringJest(toPath);
+      return originalRenameSync(fromPath, toPath);
+    };
+  }
+  snap.__AIFABRIX_WRITE_GUARD_WRAPPED__ = true;
+}
+
+wrapUnmockedFsWriteGuard();
+
+if (typeof fs.rmSync === 'function' && !fs.__AIFABRIX_LIVE_RM_GUARD_WRAPPED__) {
+  const originalRmSync = fs.rmSync;
+  fs.rmSync = function(filePath, ...args) {
+    assertLiveFabrixPathWritableDuringJest(filePath);
+    return originalRmSync.call(fs, filePath, ...args);
+  };
+  fs.__AIFABRIX_LIVE_RM_GUARD_WRAPPED__ = true;
+}
+if (typeof fs.unlinkSync === 'function' && !fs.__AIFABRIX_LIVE_UNLINK_GUARD_WRAPPED__) {
+  const originalUnlinkSync = fs.unlinkSync;
+  fs.unlinkSync = function(filePath) {
+    assertLiveFabrixPathWritableDuringJest(filePath);
+    return originalUnlinkSync.call(fs, filePath);
+  };
+  fs.__AIFABRIX_LIVE_UNLINK_GUARD_WRAPPED__ = true;
 }
 
 // PERMANENT FIX: Add global guard to prevent writes to real template files
@@ -115,8 +191,19 @@ function isProtectedPath(normalizedPath) {
     return true;
   }
 
-  // In CI environment, allow writes to templates
+  // Operator ~/.aifabrix (incl. /workspace/.aifabrix) must stay protected in CI simulation too.
+  if (process.env.JEST_WORKER_ID !== undefined && isLiveFabrixConfigPath(normalizedPath)) {
+    return true;
+  }
+
+  // In CI, only relax template protection (missing templates in temp CI copies).
   if (isCIEnv) {
+    if (normalizedPath === realTypescriptTemplate || normalizedPath === realPythonTemplate) {
+      return !allowSetupTemplateCreation;
+    }
+    if (normalizedPath.startsWith(realTemplatesPath)) {
+      return true;
+    }
     return false;
   }
 
@@ -141,6 +228,9 @@ fs.writeFileSync = function(filePath, ...args) {
   if (isProtectedPath(normalizedPath)) {
     if (normalizedPath.startsWith(path.resolve(PROJECT_ROOT, 'node_modules'))) {
       throw new Error(`GLOBAL GUARD: Attempted to write to node_modules: ${normalizedPath}. Tests must NEVER modify node_modules files.`);
+    }
+    if (isLiveFabrixConfigPath(normalizedPath)) {
+      assertWritableSecretsPathForTests(normalizedPath);
     }
     throw new Error(`GLOBAL GUARD: Attempted to write to protected path: ${normalizedPath}. Tests must NEVER modify real templates.`);
   }
@@ -347,7 +437,7 @@ afterEach(() => {
 // Cleanup after all tests
 afterAll(() => {
   global.testUtils.cleanupTempFiles();
-  if (preserveEnvBackup && process.env.AIFABRIX_CONFIG) {
+  if (isPreserveFabrixTestEnv() && preserveEnvBackup && process.env.AIFABRIX_CONFIG) {
     restoreAifabrixRuntimeDir(path.dirname(process.env.AIFABRIX_CONFIG), preserveEnvBackup);
     preserveEnvBackup = null;
   }

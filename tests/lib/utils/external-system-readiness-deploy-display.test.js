@@ -25,7 +25,7 @@ describe('external-system-readiness-deploy-display', () => {
   it('prints layered config/deployment/runtime sections without probe', () => {
     logDeployReadinessSummary({
       environment: 'dev',
-      dataplaneUrl: 'http://localhost:3111',
+      dataplaneUrl: 'http://localhost:3101',
       manifest: {
         key: 'hubspot',
         system: { authentication: { method: 'apikey' }, generateMcpContract: true },
@@ -41,7 +41,7 @@ describe('external-system-readiness-deploy-display', () => {
 
     const out = joined();
     expect(out).toContain('Environment: dev');
-    expect(out).toContain('Dataplane: http://localhost:3111');
+    expect(out).toContain('Dataplane: http://localhost:3101');
     expect(out).toContain('System Readiness:');
     expect(out).toContain('Config:');
     expect(out).toContain('Deployment:');
@@ -53,7 +53,7 @@ describe('external-system-readiness-deploy-display', () => {
   it('prints dataplane fetch warning when fetchError present', () => {
     logDeployReadinessSummary({
       environment: 'dev',
-      dataplaneUrl: 'http://localhost:3111',
+      dataplaneUrl: 'http://localhost:3101',
       manifest: { key: 'hubspot', system: {} },
       datasources: [],
       systemFromDataplane: null,
@@ -71,7 +71,7 @@ describe('external-system-readiness-deploy-display', () => {
   it('prints configured datasources then runtime probe when probeData present', () => {
     logDeployReadinessSummary({
       environment: 'dev',
-      dataplaneUrl: 'http://localhost:3111',
+      dataplaneUrl: 'http://localhost:3101',
       manifest: {
         key: 'hubspot',
         system: { authentication: { method: 'apikey' }, generateMcpContract: true },

@@ -110,8 +110,8 @@ frontDoorRouting:
       remoteServer: 'https://builder02.local',
       traefik: true
     });
-    expect(localMap.PUBLIC_URL).toBe('http://builder02.local:3111/dev/data');
-    expect(localMap.INTERNAL_URL).toBe('http://builder02.local:3111/dev/data');
+    expect(localMap.PUBLIC_URL).toBe('http://builder02.local:3101/dev/data');
+    expect(localMap.INTERNAL_URL).toBe('http://builder02.local:3101/dev/data');
     expect(localMap.INTERNAL_URL).not.toBe(dockerMap.INTERNAL_URL);
   });
 
@@ -175,7 +175,7 @@ frontDoorRouting:
       remoteServer: null,
       traefik: false
     });
-    expect(m.PUBLIC_URL).toBe('http://localhost:3111');
+    expect(m.PUBLIC_URL).toBe('http://localhost:3101');
     expect(m.INTERNAL_URL).toBe(m.PUBLIC_URL);
   });
 

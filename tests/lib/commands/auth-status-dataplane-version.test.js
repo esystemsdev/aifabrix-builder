@@ -200,8 +200,25 @@ describe('auth-status-dataplane-version', () => {
 
       await tryRefreshDataplaneVersionAfterLogin('http://localhost:3100', {});
 
-      expect(fetchDataplaneGeneralHealth).toHaveBeenCalledWith('http://localhost:3201');
+      expect(fetchDataplaneGeneralHealth).toHaveBeenCalledWith('http://localhost:3201', {
+        timeoutMs: 6000
+      });
       expect(updateDeviceDataplaneVersions).toHaveBeenCalled();
+    });
+
+    it('returns within budget when dataplane resolution is slower than the login refresh cap', async() => {
+      jest.useFakeTimers();
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue({ token: 'tok' });
+      wizardDataplane.findDataplaneServiceAppKey.mockImplementation(
+        () => new Promise((resolve) => setTimeout(() => resolve(null), 15000))
+      );
+
+      const refreshPromise = tryRefreshDataplaneVersionAfterLogin('http://localhost:3100', {});
+      await jest.advanceTimersByTimeAsync(12000);
+      await refreshPromise;
+      expect(fetchDataplaneGeneralHealth).not.toHaveBeenCalled();
+      await jest.advanceTimersByTimeAsync(5000);
+      jest.useRealTimers();
     });
 
     it('no-ops when controllerUrl is empty', async() => {

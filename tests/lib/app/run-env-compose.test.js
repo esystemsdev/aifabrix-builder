@@ -33,7 +33,8 @@ jest.mock('../../../lib/infrastructure/helpers', () => ({
   resolveInfraStatePaths: jest.fn(() => ({
     infraDir: '/config/.aifabrix/infra-dev-02',
     adminSecretsPath: '/config/.aifabrix/admin-secrets.env'
-  }))
+  })),
+  PGPASS_BOOTSTRAP_BASENAME: '.pgpass.bootstrap'
 }));
 
 jest.mock('../../../lib/core/secrets-ensure', () => ({
@@ -246,6 +247,20 @@ describe('run-env-compose', () => {
       await runEnvCompose.buildMergedRunEnvAndWrite('myapp', {}, '/tmp/apps', 2);
       const dbInitCall = adminSecrets.envObjectToContent.mock.calls[1][0];
       expect(dbInitCall.POSTGRES_PASSWORD).toBe('admin');
+    });
+
+    it('falls back to .pgpass.bootstrap when pgpass is missing', async() => {
+      const infraDir = '/config/.aifabrix/infra-dev-06';
+      const bootstrapPath = path.join(infraDir, '.pgpass.bootstrap');
+      infraHelpers.resolveInfraStatePaths.mockReturnValueOnce({
+        infraDir,
+        adminSecretsPath: '/config/.aifabrix/admin-secrets.env'
+      });
+      fsSync.existsSync.mockImplementation((p) => p === bootstrapPath);
+      fs.readFile.mockResolvedValueOnce('postgres:5432:postgres:pgadmin:frombootstrap\n');
+      await runEnvCompose.buildMergedRunEnvAndWrite('keycloak', {}, '/tmp/apps', 6);
+      const dbInitCall = adminSecrets.envObjectToContent.mock.calls[1][0];
+      expect(dbInitCall.POSTGRES_PASSWORD).toBe('frombootstrap');
     });
 
     it('sets PORT and template port var (e.g. MISO_PORT) to container port from application.yaml, not localPort', async() => {

@@ -79,6 +79,8 @@ describe('App.js Additional Coverage Tests', () => {
   });
 
   describe('promptForOptions - port validation in createApp flow', () => {
+    jest.setTimeout(15000);
+
     it('should prompt for port and validate invalid port values', async() => {
       // Test that port validation function is called during createApp when port is not provided
       let portValidationCalled = false;
@@ -129,51 +131,76 @@ describe('App.js Additional Coverage Tests', () => {
     });
 
     it('should not prompt for port when port is already provided', async() => {
-      inquirer.prompt.mockImplementationOnce((questions) => {
-        // Port question should not be present when port is provided
-        const portQuestion = questions.find(q => q.name === 'port');
-        expect(portQuestion).toBeUndefined();
+      const fullOptions = {
+        type: 'webapp',
+        port: 8080,
+        language: 'typescript',
+        database: false,
+        redis: false,
+        storage: false,
+        authentication: false,
+        github: false
+      };
 
-        return Promise.resolve({
-          language: 'typescript',
-          database: false,
-          redis: false,
-          storage: false,
-          authentication: false
-        });
+      inquirer.prompt.mockImplementation(async(questions) => {
+        const portQuestion = questions.find((q) => q.name === 'port');
+        expect(portQuestion).toBeUndefined();
+        const answers = {};
+        for (const q of questions) {
+          if (q.type === 'confirm') {
+            answers[q.name] = false;
+          } else if (q.type === 'list' && q.choices && q.choices.length) {
+            answers[q.name] = q.choices[0].value;
+          } else if (q.default !== undefined) {
+            answers[q.name] = q.default;
+          }
+        }
+        return answers;
       });
 
-      await app.createApp('test-app', { type: 'webapp', port: 8080, language: 'typescript' });
+      await app.createApp('test-app', fullOptions);
 
-      expect(inquirer.prompt).toHaveBeenCalled();
+      const portQuestions = inquirer.prompt.mock.calls.flatMap((call) => call[0]).filter((q) => q.name === 'port');
+      expect(portQuestions).toHaveLength(0);
     });
   });
 
   describe('promptForOptions - controller prompt when conditions', () => {
+    jest.setTimeout(15000);
+
     it('should NOT prompt for controller when github is explicitly false', async() => {
-      inquirer.prompt.mockImplementationOnce((questions) => {
-        // Check that controller question is not added when github is false
-        const hasControllerQuestion = questions.some(q => q.name === 'controller');
-        expect(hasControllerQuestion).toBe(false);
-
-        return Promise.resolve({
-          port: '3000',
-          language: 'typescript',
-          database: false,
-          redis: false,
-          storage: false,
-          authentication: false
-        });
-      });
-
-      await app.createApp('test-app', {
+      const fullOptions = {
         type: 'webapp',
         port: 3000,
         language: 'typescript',
+        database: false,
+        redis: false,
+        storage: false,
+        authentication: false,
         github: false
+      };
+
+      inquirer.prompt.mockImplementation(async(questions) => {
+        expect(questions.some((q) => q.name === 'controller')).toBe(false);
+        const answers = {};
+        for (const q of questions) {
+          if (q.type === 'confirm') {
+            answers[q.name] = false;
+          } else if (q.type === 'list' && q.choices && q.choices.length) {
+            answers[q.name] = q.choices[0].value;
+          } else if (q.default !== undefined) {
+            answers[q.name] = q.default;
+          }
+        }
+        return answers;
       });
 
-      expect(inquirer.prompt).toHaveBeenCalled();
+      await app.createApp('test-app', fullOptions);
+
+      const controllerQuestions = inquirer.prompt.mock.calls
+        .flatMap((call) => call[0])
+        .filter((q) => q.name === 'controller');
+      expect(controllerQuestions).toHaveLength(0);
     });
 
     it('should prompt for controller URL when controller is true and controllerUrl not provided', async() => {

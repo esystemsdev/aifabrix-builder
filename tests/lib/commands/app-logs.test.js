@@ -10,6 +10,9 @@ jest.mock('../../../lib/core/config', () => ({
 }));
 jest.mock('../../../lib/utils/app-run-containers', () => ({ getContainerName: jest.fn((app, devId) => `aifabrix-${app}`) }));
 jest.mock('../../../lib/app/push', () => ({ validateAppName: jest.fn() }));
+jest.mock('../../../lib/utils/remote-docker-env', () => ({
+  getDockerExecEnv: jest.fn().mockResolvedValue({})
+}));
 
 const { exec, spawn } = require('child_process');
 jest.mock('child_process', () => ({
@@ -23,6 +26,19 @@ jest.spyOn(util, 'promisify').mockImplementation((fn) => fn);
 
 const { PassThrough } = require('stream');
 const appLogs = require('../../../lib/commands/app-logs');
+
+/** @returns {import('child_process').ChildProcess} */
+function mockSpawnClosesImmediately() {
+  return {
+    on: jest.fn((ev, fn) => {
+      if (ev === 'close') {
+        fn(0);
+      }
+    }),
+    stdout: { on: jest.fn() },
+    stderr: { on: jest.fn() }
+  };
+}
 
 describe('app-logs', () => {
   beforeEach(() => {
@@ -160,12 +176,7 @@ describe('app-logs', () => {
           stderr: ''
         })
       );
-      spawn.mockImplementation(() => ({
-        on: jest.fn((ev, fn) => {
-          if (ev === 'close') setImmediate(() => fn(0));
-          return { on: jest.fn() };
-        })
-      }));
+      spawn.mockImplementation(() => mockSpawnClosesImmediately());
 
       await appLogs.runAppLogs('myapp', { follow: false, tail: 100 });
 
@@ -181,12 +192,7 @@ describe('app-logs', () => {
           stderr: ''
         })
       );
-      spawn.mockImplementation(() => ({
-        on: jest.fn((ev, fn) => {
-          if (ev === 'close') setImmediate(() => fn(0));
-          return { on: jest.fn() };
-        })
-      }));
+      spawn.mockImplementation(() => mockSpawnClosesImmediately());
 
       const logger = require('../../../lib/utils/logger');
       await appLogs.runAppLogs('myapp', { follow: false, tail: 100 });

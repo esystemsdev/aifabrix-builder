@@ -68,7 +68,7 @@ describe('url-declarative-resolve helpers (matrix fixtures)', () => {
         pathPrefix: '/dev',
         patternPath
       })
-    ).toBe('http://localhost:3111/dev/data');
+    ).toBe('http://localhost:3101/dev/data');
   });
 
   it('Matrix A1 public remote docker — no devNN subdomain for dev', () => {
@@ -139,7 +139,7 @@ describe('url-declarative-resolve helpers (matrix fixtures)', () => {
       derivedEnvKey: 'dev',
       declarativePublicUrlsUseLocalhost: false
     });
-    expect(internal).toBe('http://builder02.local:3111/dev/data');
+    expect(internal).toBe('http://builder02.local:3101/dev/data');
   });
 
   it('cross-app token parsing', () => {

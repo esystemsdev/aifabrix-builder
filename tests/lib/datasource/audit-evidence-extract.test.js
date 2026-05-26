@@ -10,11 +10,22 @@ const {
   correlationIdFromEnvelope,
   expectedOperationsFromEnvelope
 } = require('../../../lib/datasource/audit-evidence-extract');
-const { clearCipCapacityDisplayConfigCacheForTests } = require('../../../lib/utils/load-cip-capacity-display-config');
+const loadCipConfig = require('../../../lib/utils/load-cip-capacity-display-config');
+const { clearCipCapacityDisplayConfigCacheForTests } = loadCipConfig;
+const fallbackCipConfig = require('../../../lib/schema/cip-capacity-display.fallback.json');
 
 describe('audit-evidence-extract', () => {
   beforeEach(() => {
+    delete process.env.AIFABRIX_EXTERNAL_DATASOURCE_SCHEMA;
     clearCipCapacityDisplayConfigCacheForTests();
+    jest.spyOn(loadCipConfig, 'getCipCapacityDisplayConfig').mockReturnValue({
+      standardOrder: fallbackCipConfig.standardOperationOrder,
+      aliases: fallbackCipConfig.displayAliases || { create: 'insert (create)' }
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
   const sampleEnvelope = {
     datasourceKey: 'test-e2e-hubspot-companies',
@@ -75,6 +86,7 @@ describe('audit-evidence-extract', () => {
   });
 
   it('[EDGE] partial external schema still allows CRUD via fallback merge', () => {
+    jest.restoreAllMocks();
     const fs = require('fs');
     const os = require('os');
     const path = require('path');
