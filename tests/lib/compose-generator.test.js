@@ -726,64 +726,36 @@ describe('Compose Generator Module', () => {
     });
 
     it('should throw error when DB_PASSWORD is missing', async() => {
-      // Ensure .env file exists with content that doesn't have DB_PASSWORD
-      await ensureEnvFile('test-app', 'OTHER_VAR=value\n');
+      const { readDatabasePasswords } = require('../../lib/utils/compose-db-passwords');
+      const envPath = await ensureEnvFile('test-app', 'OTHER_VAR=value\n');
 
-      const config = {
-        port: 3000,
-        requires: { database: true }
-      };
-
-      await expect(composeGenerator.generateDockerCompose('test-app', config, {}))
+      await expect(readDatabasePasswords(envPath, [], 'test-app'))
         .rejects.toThrow('Missing required password variable');
     });
 
     it('should throw error when DB_PASSWORD is empty', async() => {
-      // Ensure .env file exists with empty DB_PASSWORD
-      await ensureEnvFile('test-app', 'DB_PASSWORD=\n');
+      const { readDatabasePasswords } = require('../../lib/utils/compose-db-passwords');
+      const envPath = await ensureEnvFile('test-app', 'DB_PASSWORD=\n');
 
-      const config = {
-        port: 3000,
-        requires: { database: true }
-      };
-
-      await expect(composeGenerator.generateDockerCompose('test-app', config, {}))
+      await expect(readDatabasePasswords(envPath, [], 'test-app'))
         .rejects.toThrow('Password variable DB_PASSWORD is empty');
     });
 
     it('should throw error when DB_0_PASSWORD is missing for multiple databases', async() => {
-      // Ensure .env file exists with only DB_1_PASSWORD
-      await ensureEnvFile('test-app', 'DB_1_PASSWORD=pass2\n');
+      const { readDatabasePasswords } = require('../../lib/utils/compose-db-passwords');
+      const envPath = await ensureEnvFile('test-app', 'DB_1_PASSWORD=pass2\n');
+      const databases = [{ name: 'db1' }, { name: 'db2' }];
 
-      const config = {
-        port: 3000,
-        requires: {
-          databases: [
-            { name: 'db1' },
-            { name: 'db2' }
-          ]
-        }
-      };
-
-      await expect(composeGenerator.generateDockerCompose('test-app', config, {}))
+      await expect(readDatabasePasswords(envPath, databases, 'test-app'))
         .rejects.toThrow('Missing required password variable DB_0_PASSWORD');
     });
 
     it('should throw error when DB_1_PASSWORD is missing for multiple databases', async() => {
-      // Ensure .env file exists with only DB_0_PASSWORD
-      await ensureEnvFile('test-app', 'DB_0_PASSWORD=pass1\n');
+      const { readDatabasePasswords } = require('../../lib/utils/compose-db-passwords');
+      const envPath = await ensureEnvFile('test-app', 'DB_0_PASSWORD=pass1\n');
+      const databases = [{ name: 'db1' }, { name: 'db2' }];
 
-      const config = {
-        port: 3000,
-        requires: {
-          databases: [
-            { name: 'db1' },
-            { name: 'db2' }
-          ]
-        }
-      };
-
-      await expect(composeGenerator.generateDockerCompose('test-app', config, {}))
+      await expect(readDatabasePasswords(envPath, databases, 'test-app'))
         .rejects.toThrow('Missing required password variable DB_1_PASSWORD');
     });
   });
