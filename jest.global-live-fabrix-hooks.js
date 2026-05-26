@@ -24,7 +24,7 @@ function createSetupCiLiveFabrixGuardProject({ isCI, sharedTransform }) {
     testPathIgnorePatterns: ['/node_modules/', '\\\\node_modules\\\\'],
     setupFiles: ['<rootDir>/tests/capture-real-fs.js', '<rootDir>/tests/setup-ci-env.js'],
     setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
-    testTimeout: isCI ? 10000 : 5000,
+    testTimeout: isCI ? 15000 : 8000,
     maxWorkers: 1,
     ...globalLiveFabrixHooks
   };

@@ -170,6 +170,15 @@ let allowSetupTemplateCreation = false;
 
 // Helper to check if path is protected (not a temp directory)
 function isProtectedPath(normalizedPath) {
+  // Live operator config (incl. /workspace/.aifabrix) — protected even when Jest cwd is a CI temp copy under /tmp.
+  if (process.env.JEST_WORKER_ID !== undefined && isLiveFabrixConfigPath(normalizedPath)) {
+    return true;
+  }
+
+  const cwdResolved = path.resolve(process.cwd());
+  const pathUnderCwd =
+    normalizedPath === cwdResolved || normalizedPath.startsWith(`${cwdResolved}${path.sep}`);
+
   // Allow writes to temp directories (common temp prefixes)
   const isTempPath = normalizedPath.includes('/tmp/') ||
                      normalizedPath.includes('\\temp\\') ||
@@ -179,7 +188,7 @@ function isProtectedPath(normalizedPath) {
                      normalizedPath.includes('aifabrix-') ||
                      normalizedPath.includes(`${path.sep}.temp${path.sep}`) ||
                      normalizedPath.includes(`${path.sep}jest-protection`) ||
-                     process.cwd().includes('/tmp/');
+                     (process.cwd().includes('/tmp/') && pathUnderCwd);
 
   if (isTempPath) {
     return false;
@@ -188,11 +197,6 @@ function isProtectedPath(normalizedPath) {
   // Check if writing to node_modules
   const nodeModulesPath = path.resolve(PROJECT_ROOT, 'node_modules');
   if (normalizedPath.startsWith(nodeModulesPath)) {
-    return true;
-  }
-
-  // Operator ~/.aifabrix (incl. /workspace/.aifabrix) must stay protected in CI simulation too.
-  if (process.env.JEST_WORKER_ID !== undefined && isLiveFabrixConfigPath(normalizedPath)) {
     return true;
   }
 
