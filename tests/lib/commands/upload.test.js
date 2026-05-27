@@ -161,7 +161,7 @@ describe('upload command', () => {
         expect.objectContaining({ force: true })
       );
       expect(logger.log).toHaveBeenCalledWith(
-        expect.stringContaining('Plan 331')
+        expect.stringContaining('schema replacement guards')
       );
     });
 

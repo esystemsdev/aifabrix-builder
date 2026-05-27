@@ -894,6 +894,7 @@ Define request/response types using JSDoc `@typedef`:
 
 ### Must Not Do (❌)
 - ❌ Never hardcode secrets, passwords, or tokens
+- ❌ Never hardcode lab/training integration names, vendor names, or internal plan IDs in generic CLI/helpers (`lib/commands/**`, `lib/cli/**`, shared `lib/utils/*-error*.js`); use dynamic keys from user input, manifests, and secrets — see [cli-product-neutral.mdc](cli-product-neutral.mdc)
 - ❌ Never expose sensitive data in error messages
 - ❌ Never use synchronous file operations in async functions (unless necessary)
 - ❌ Never ignore errors or use empty catch blocks

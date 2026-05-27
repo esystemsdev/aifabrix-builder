@@ -36,6 +36,21 @@ describe('secrets-missing-error', () => {
     expect(msg).toContain('Stale-template-hint: oauth-leftover | repair hubspot-demo');
   });
 
+  it('buildMissingSecretsErrorMessage hints when same segment exists under another namespace', () => {
+    const msg = buildMissingSecretsErrorMessage({
+      missing: ['kv://lab-app-e2e/clientId', 'kv://lab-app-e2e/tenantId'],
+      secrets: {
+        'lab-app/clientId': 'id-1',
+        'lab-app/tenantId': 'tenant-1'
+      },
+      appName: 'lab-app-e2e'
+    });
+    expect(msg).toContain('Alternate-kv-hint:');
+    expect(msg).toContain('kv://lab-app/clientId');
+    expect(msg).toContain('kv://lab-app-e2e/clientId');
+    expect(msg).toContain('repair lab-app-e2e');
+  });
+
   it('buildMissingSecretsErrorMessage includes remediation marker', () => {
     const msg = buildMissingSecretsErrorMessage({
       missing: ['kv://hubspot-demo/clientSecret'],

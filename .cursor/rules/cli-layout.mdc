@@ -7,6 +7,8 @@ alwaysApply: false
 
 When you touch **CLI surface** (`bin/aifabrix.js`, `lib/cli.js`, `lib/cli/**`, `lib/commands/**`) or **shared CLI formatters**, you must keep behavior aligned with the canonical docs in this folder.
 
+**Product-neutral copy:** User-facing help, errors, and warnings must not reference internal plan IDs or hardcode lab-only integration names in generic code. See [cli-product-neutral.mdc](./cli-product-neutral.mdc).
+
 ## Sources of truth (read before shipping)
 
 | Document | Role |

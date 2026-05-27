@@ -353,12 +353,35 @@ aifabrix deploy myapp
 
 All Controller and Dataplane app endpoints accept **token-only** auth: **user token** (device from login) as `Authorization: Bearer <token>`, **application token** (client token) as `x-client-token: <token>`. The CLI never sends x-client-id or x-client-secret to app endpoints. When no token is available, the CLI exchanges credentials for a client token at the token endpoint, then sends it as `x-client-token`.
 
+<a id="cicd-deployment-auth-aifabrix_deployment_auth"></a>
+
+**CI/CD deployment auth (`AIFABRIX_DEPLOYMENT_AUTH`):**
+
+For pipeline publish and dataplane validation commands (`upload`, `test-integration`, `test-e2e`, `test-trust`, protection upload, and related paths), the CLI chooses how to authenticate using **`AIFABRIX_DEPLOYMENT_AUTH`** (or per-call `deploymentAuth` in code):
+
+| Value | Behavior |
+| ------- | ---------- |
+| `auto` (default) | Try device Bearer from `aifabrix login` first, then cached/exchanged client token. If pipeline publish returns **401 Invalid token** with a device token, the CLI **automatically retries once** with the application client token when app credentials exist. |
+| `client-credentials` | **Skip device token**; use client token from `MISO_CLIENTID` / `MISO_CLIENTSECRET` in the process environment or from `~/.aifabrix/secrets.local.yaml` (`<app>-client-idKeyVault` / `<app>-client-secretKeyVault`) |
+| `device` | Require device Bearer only |
+
+Example (no interactive login; dataplane app credentials in project `.env`):
+
+```bash
+export AIFABRIX_DEPLOYMENT_AUTH=client-credentials
+export MISO_CLIENTID=your-dataplane-app-client-id
+export MISO_CLIENTSECRET=your-secret
+aifabrix upload test-protection --probe
+```
+
+Human workflows can keep the default `auto` and use `aifabrix login`. See [Permissions](permissions.md#pipeline-auth-split).
+
 The deploy command automatically:
 1. Gets controller and environment from `~/.aifabrix/config.yaml`
-2. Tries authentication in this order:
+2. Tries authentication in this order (when `AIFABRIX_DEPLOYMENT_AUTH` is `auto`):
    - **Device token** (from `aifabrix login --method device`): sent as `Authorization: Bearer <token>` (user token).
    - **Client token** (from credentials exchange): sent as `x-client-token: <token>` (application token; not Bearer).
-   - **Credentials fallback**: when no token is available, reads clientId/secret from `~/.aifabrix/secrets.local.yaml` (or `--client-id` / `--client-secret`), exchanges them for a token at the token endpoint, then uses Bearer for pipeline validate/deploy.
+   - **Credentials fallback**: when no token is available, reads clientId/secret from `~/.aifabrix/secrets.local.yaml` (or `--client-id` / `--client-secret`), exchanges them for a token at the token endpoint, then uses `x-client-token` on dataplane pipeline endpoints.
 3. If using a Bearer token: validates token with the controller; if invalid, errors with instructions to run `aifabrix login`.
 4. Sends deployment request with Bearer token only (app endpoints never receive client id/secret).
 
@@ -458,7 +481,8 @@ aifabrix credential list --active-only --page-size 50
 <a id="aifabrix-deployment-list"></a>
 ## aifabrix deployment list
 
-List **environment deployments** for the current environment (paginated; default page size 50). Returns both application and infrastructure deployments for that environment. 
+List **environment deployments** for the current environment (paginated; default page size 50). Returns both application and infrastructure deployments for that environment.
+
 **Example:**
 ```bash
 aifabrix deployment list
@@ -472,7 +496,8 @@ aifabrix deployment list --environment dev --page-size 50
 <a id="aifabrix-app-deployment-appkey"></a>
 ## aifabrix app deployment <appKey>
 
-List last N deployments for a specific application in the current environment (default pageSize=50). 
+List last N deployments for a specific application in the current environment (default pageSize=50).
+
 **Example:**
 ```bash
 aifabrix app deployment myapp

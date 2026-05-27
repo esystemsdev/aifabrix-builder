@@ -79,8 +79,26 @@ describe('unified-validation-run', () => {
 
     expect(requireBearerForDataplanePipeline).toHaveBeenCalledWith({ token: 't' });
     expect(uploadExternalSystem).toHaveBeenCalledTimes(1);
-    expect(uploadExternalSystem).toHaveBeenCalledWith('sys-one', { minimal: true });
+    expect(uploadExternalSystem).toHaveBeenCalledWith('sys-one', { minimal: true, verbose: false });
     expect(postValidationRunAndOptionalPoll).toHaveBeenCalled();
+  });
+
+  it('forwards force to uploadExternalSystem when sync and force are true', async() => {
+    uploadExternalSystem.mockResolvedValue();
+
+    await runUnifiedDatasourceValidation('ds-one', {
+      app: 'app-one',
+      runType: 'test',
+      sync: true,
+      force: true,
+      verbose: true
+    });
+
+    expect(uploadExternalSystem).toHaveBeenCalledWith('sys-one', {
+      minimal: true,
+      verbose: true,
+      force: true
+    });
   });
 
   it('forwards verbosePoll when verbose is true', async() => {

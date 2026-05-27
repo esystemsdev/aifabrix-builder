@@ -37,7 +37,7 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 | `aifabrix datasource upload` | Dataplane | `external-system:publish` | **Datasource-scoped publish** on the Dataplane. The CLI displays a **Dataplane pipeline warning** before sending configuration. |
 | `aifabrix datasource test` | Dataplane | `external-system:publish` or `external-data-source:read` | Unified validation run (test run type) on the dataplane; same deployment auth as `test-integration`. |
 | `aifabrix datasource test-integration` | Dataplane | `external-system:publish` or `external-data-source:read` | Unified validation run (integration) on the dataplane; supports deployment auth including **client credentials** exchanged for an app token (CI/CD). |
-| `aifabrix datasource test-e2e` | Dataplane | **Logged in:** `external-system:read` **and** `external-data-source:sync` **and** `external-data-source:update` (all required). **CI:** validated app token (`x-client-token`). See [E2E validation and permissions](#e2e-validation-and-permissions). With **`--verify-audit`**, also **`audit:read`**. |
+| `aifabrix datasource test-e2e` | Dataplane | **Logged in:** `external-system:read` **and** `external-data-source:sync` **and** `external-data-source:update` (all required). **CI:** validated app token (`x-client-token`). With **`--verify-audit`**, also **`audit:read`**. | See [E2E validation and permissions](#e2e-validation-and-permissions). |
 | `aifabrix datasource verify-audit` | Dataplane | `audit:read` | Re-runs the nine-row audit evidence matrix from the latest `test-e2e` debug log or explicit correlation/execution ids (no E2E re-run). |
 | `aifabrix datasource load <datasourceKey>` | Dataplane | `external-data-source:sync` | Bulk record sync into dataplane storage. External integration only. **`--dry-run`** parses locally only (no dataplane write). Deployment auth: Bearer/API key or **x-client-token**. |
 | `aifabrix datasource export <datasourceKey>` | Dataplane | `record:search` | Governed records search export (not direct DB). External integration only. Max **10000** rows per run. Same deployment auth as other datasource dataplane commands. |
@@ -99,7 +99,7 @@ For `aifabrix datasource test`, `datasource test-integration`, `datasource test-
 When you use a **user** token from `aifabrix login`, the dataplane **validates RBAC** on the controller for **every** scope below. **All three are required** to start E2E; missing any scope returns **access denied**.
 
 | Permission | Why E2E needs it |
-|------------|------------------|
+| ------------ | ------------------ |
 | **`external-system:read`** | Read integration/system context and start the unified validation run. |
 | **`external-data-source:sync`** | Run **sync jobs** during E2E (data ingestion into dataplane storage). |
 | **`external-data-source:update`** | Run **capacity / CIP** steps that may **create, update, or delete** records on the external system. |
@@ -130,14 +130,14 @@ See [External integration testing – E2E](external-integration-testing.md#datas
 ### Additional scopes (optional)
 
 | Add-on | Scope |
-|--------|--------|
+| -------- | -------- |
 | Audit evidence matrix after a green E2E (`--verify-audit`) | **`audit:read`** |
 | Pre-run publish of local files (`--sync` on CLI) | **`external-system:publish`** |
 
 ### Other commands (comparison)
 
 | Goal | Command | Typical scopes (logged in) |
-|------|---------|----------------------------|
+| ------ | --------- | ---------------------------- |
 | Structural/policy validation, no E2E side effects | `datasource test` | `external-system:read` or `external-system:publish` |
 | Integration validation without full E2E CRUD | `datasource test-integration` | `external-system:publish` or `external-data-source:read` |
 | Bulk fixture import | `datasource load` | **`external-data-source:sync`** only |
@@ -202,6 +202,7 @@ Optional flags on **`aifabrix datasource test-e2e --help`** (for example **`--no
 - **credential:update** – Update credential.
 - **credential:delete** – Delete credential.
 - **Pipeline auth split** – **Publish to controller** from the Dataplane (internal) uses **client credentials** (x-client-id, x-client-secret) toward the controller; Bearer is not used on that path. **CLI → Dataplane** calls (`upload`, datasource upload, pipeline validate, **protection** validate/upload/list/show/delete, validation runs) accept **Bearer/API key** or **x-client-token** (application token). The CLI obtains **x-client-token** by exchanging app client credentials at the controller token endpoint when no user Bearer is available; see [Authentication](authentication.md) and [Deployment](deployment.md).
+- **CI/CD (`AIFABRIX_DEPLOYMENT_AUTH=client-credentials`)** – Skips device Bearer and uses **MISO_CLIENTID** / **MISO_CLIENTSECRET** (or per-app secrets) so `upload`, `test-integration`, `test-e2e`, and related commands match automated pipeline publish without `aifabrix login`. Documented in [Deployment – CI/CD deployment auth](deployment.md#cicd-deployment-auth-aifabrix_deployment_auth).
 
 ---
 

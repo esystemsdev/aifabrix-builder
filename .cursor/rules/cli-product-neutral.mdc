@@ -1,0 +1,43 @@
+---
+description: Apply when changing aifabrix CLI code, help text, errors, or user-facing docs under docs/commands. Keeps product output free of internal plans, training labs, and hardcoded integration names.
+alwaysApply: false
+---
+
+# CLI product-neutral output (Builder)
+
+The **aifabrix** CLI is a **product**. User-visible strings must not encode internal engineering artifacts.
+
+## Forbidden in product paths
+
+Applies to **`lib/cli/**`**, **`lib/commands/**`**, CLI help (Commander `.description()` / `.option()` / `addHelpText`), **`lib/utils/*-error*.js`**, terminal messages from **`lib/utils/cli-*`**, and **`docs/commands/**`** (see [docs-rules.mdc](./docs-rules.mdc)).
+
+| Do not use | Use instead |
+| ---------- | ----------- |
+| Internal plan IDs (`Plan 331`, `plan 148`, `BK-1`) | User terms: *active datasource schema guards*, *schema replacement*, *overlap* |
+| Training / lab-only system keys baked into `if` branches (`sharepoint-e2e`, `hubspot-demo` in runtime logic) | **Dynamic** behavior from `systemKey`, `appName`, manifest, env.template, or secrets map |
+| Hardcoded vendor or connector names in generic helpers | Generic rules (path suffix, namespace, configuration keys from disk) |
+| Cursor plan file paths in errors or help | Link only in `.cursor/plans/` and contributor docs |
+
+**Examples in docs/commands** may name real apps (`hubspot-e2e`) when illustrating a command; **library code** must not special-case those names unless the user passed them as arguments.
+
+## Required patterns
+
+- **Missing `kv://` secrets:** Compare requested paths to the loaded secrets map generically (e.g. same path segment under a different namespace). Never hardcode `sharepoint` / `sharepoint-e2e` (or any other lab pair) in `lib/`.
+- **`--force` messaging:** Describe dataplane behavior (*bypass active-datasource schema replacement guards*), not internal plan numbers. Do **not** append extra CLI hints by matching English substrings on API errors — the dataplane pipeline already returns remediation in the 400 body when schema replacement is blocked.
+- **No `upload-pipeline-error-hints`-style modules:** Prefer forwarding `formatApiError` output; optional hints belong in the API contract, not duplicated heuristics in the CLI.
+- **Auth / pipeline errors:** Describe what the user can do (`aifabrix login`, `AIFABRIX_DEPLOYMENT_AUTH=client-credentials`), not ticket or plan IDs.
+- **JSDoc `@fileoverview`:** No plan numbers; optional brief behavior description only.
+
+## Verification
+
+Before merging CLI UX changes:
+
+1. `rg -i 'plan [0-9]|BK-[0-9]|sharepoint-e2e' lib/cli lib/commands lib/utils --glob '*.js'` → no matches in generic helpers (fixture strings in tests are OK).
+2. New error hints must work for **any** integration folder name the user owns.
+3. [cli-layout.mdc](./cli-layout.mdc) and [docs-rules.mdc](./docs-rules.mdc) still apply for glyphs and user-doc scope.
+
+## Related
+
+- [cli-layout.mdc](./cli-layout.mdc) — terminal layout and output profiles
+- [docs-rules.mdc](./docs-rules.mdc) — public CLI documentation audience
+- [project-rules.mdc](./project-rules.mdc) — ISO / security baseline
