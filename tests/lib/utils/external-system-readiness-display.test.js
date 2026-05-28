@@ -67,7 +67,7 @@ describe('external-system-readiness-display', () => {
     expect(out).toContain('Runtime Readiness:');
     expect(out).toContain('contacts');
     expect(out).toContain('deals');
-    expect(out).toContain('Credential Test:');
+    expect(out).toContain('Connectivity check:');
   });
 });
 
