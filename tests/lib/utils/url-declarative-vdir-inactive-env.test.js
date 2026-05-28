@@ -37,59 +37,81 @@ describe('url-declarative-vdir-inactive-env', () => {
       await fsp.rm(tmpDir, { recursive: true, force: true });
     });
 
-    it('rewrites any UPPER_SNAKE line with token when path inactive', async() => {
+    it('rewrites DATAPLANE_RELATIVE_PATH when path inactive and app.key is dataplane', async() => {
       await fsp.writeFile(
         variablesPath,
-        `port: 8082
+        `app:
+  key: dataplane
+port: 3001
 frontDoorRouting:
-  pattern: /auth/*
+  pattern: /data/*
+`,
+        'utf8'
+      );
+      const content = `DATAPLANE_RELATIVE_PATH=${URL_DECLARATIVE_VDIR_PUBLIC_TOKEN}\n`;
+      const out = rewriteInactiveDeclarativeVdirPublicContent(content, variablesPath, { traefik: false });
+      expect(out).toBe(`DATAPLANE_RELATIVE_PATH=${INACTIVE_VDIR_PUBLIC_ENV_FALLBACK}\n`);
+    });
+
+    it('rewrites MYAPP_RELATIVE_PATH when path inactive and app.key is myapp', async() => {
+      await fsp.writeFile(
+        variablesPath,
+        `app:
+  key: myapp
+port: 3001
+`,
+        'utf8'
+      );
+      const content = `MYAPP_RELATIVE_PATH=${URL_DECLARATIVE_VDIR_PUBLIC_TOKEN}\n`;
+      const out = rewriteInactiveDeclarativeVdirPublicContent(content, variablesPath, { traefik: false });
+      expect(out).toBe(`MYAPP_RELATIVE_PATH=${INACTIVE_VDIR_PUBLIC_ENV_FALLBACK}\n`);
+    });
+
+    it('does not rewrite unrelated keys when path inactive', async() => {
+      await fsp.writeFile(
+        variablesPath,
+        `app:
+  key: dataplane
+port: 3001
 `,
         'utf8'
       );
       const content = `FOO=${URL_DECLARATIVE_VDIR_PUBLIC_TOKEN}\n`;
       const out = rewriteInactiveDeclarativeVdirPublicContent(content, variablesPath, { traefik: false });
-      expect(out).toBe(`FOO=${INACTIVE_VDIR_PUBLIC_ENV_FALLBACK}\n`);
+      expect(out).toBe(content);
     });
 
     it('does not rewrite when traefik and frontDoorRouting.enabled are true', async() => {
       await fsp.writeFile(
         variablesPath,
-        `port: 8082
+        `app:
+  key: dataplane
+port: 8082
 frontDoorRouting:
   pattern: /auth/*
   enabled: true
 `,
         'utf8'
       );
-      const content = `FOO=${URL_DECLARATIVE_VDIR_PUBLIC_TOKEN}\n`;
+      const content = `DATAPLANE_RELATIVE_PATH=${URL_DECLARATIVE_VDIR_PUBLIC_TOKEN}\n`;
       const out = rewriteInactiveDeclarativeVdirPublicContent(content, variablesPath, { traefik: true });
       expect(out).toBe(content);
     });
 
-    it('rewrites every line that uses the vdir-public token when path inactive', async() => {
+    it('still rewrites KC_HTTP_RELATIVE_PATH when traefik on but front door disabled', async() => {
       await fsp.writeFile(
         variablesPath,
-        `port: 8082
-`,
-        'utf8'
-      );
-      const content = `A=${URL_DECLARATIVE_VDIR_PUBLIC_TOKEN}\nB=${URL_DECLARATIVE_VDIR_PUBLIC_TOKEN}\n`;
-      const out = rewriteInactiveDeclarativeVdirPublicContent(content, variablesPath, { traefik: false });
-      expect(out).toBe(`A=${INACTIVE_VDIR_PUBLIC_ENV_FALLBACK}\nB=${INACTIVE_VDIR_PUBLIC_ENV_FALLBACK}\n`);
-    });
-
-    it('still rewrites when traefik is true but frontDoorRouting.enabled is not true', async() => {
-      await fsp.writeFile(
-        variablesPath,
-        `port: 8082
+        `app:
+  key: keycloak
+port: 8082
 frontDoorRouting:
   pattern: /auth/*
 `,
         'utf8'
       );
-      const content = `FOO=${URL_DECLARATIVE_VDIR_PUBLIC_TOKEN}\n`;
+      const content = `KC_HTTP_RELATIVE_PATH=${URL_DECLARATIVE_VDIR_PUBLIC_TOKEN}\n`;
       const out = rewriteInactiveDeclarativeVdirPublicContent(content, variablesPath, { traefik: true });
-      expect(out).toBe(`FOO=${INACTIVE_VDIR_PUBLIC_ENV_FALLBACK}\n`);
+      expect(out).toBe(`KC_HTTP_RELATIVE_PATH=${INACTIVE_VDIR_PUBLIC_ENV_FALLBACK}\n`);
     });
   });
 });

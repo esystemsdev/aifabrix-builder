@@ -14,7 +14,10 @@ const config = require('../../../lib/core/config');
 const upCommon = require('../../../lib/commands/up-common');
 const platformUrl = require('../../../lib/utils/platform-controller-url');
 const controllerUrl = require('../../../lib/utils/controller-url');
-const { ensureSetupPlatformAuth } = require('../../../lib/commands/setup-platform-auth');
+const {
+  syncPlatformControllerUrlsInConfig,
+  ensureSetupPlatformAuth
+} = require('../../../lib/commands/setup-platform-auth');
 
 describe('lib/commands/setup-platform-auth', () => {
   beforeEach(() => {
@@ -32,7 +35,25 @@ describe('lib/commands/setup-platform-auth', () => {
     });
   });
 
+  it('syncPlatformControllerUrlsInConfig persists resolved URLs', async() => {
+    const url = await syncPlatformControllerUrlsInConfig();
+    expect(url).toBe('http://localhost:3600');
+    expect(platformUrl.resolvePlatformControllerUrl).toHaveBeenCalled();
+    expect(config.setPlatformControllerUrl).toHaveBeenCalledWith('http://localhost:3600');
+    expect(config.setControllerUrl).toHaveBeenCalledWith('http://localhost:3600');
+  });
+
   it('persists platform-controller and controller URLs', async() => {
+    await ensureSetupPlatformAuth();
+    expect(platformUrl.resolvePlatformControllerUrl).toHaveBeenCalled();
+    expect(config.getPlatformControllerUrl).not.toHaveBeenCalled();
+    expect(config.setPlatformControllerUrl).toHaveBeenCalledWith('http://localhost:3600');
+    expect(config.setControllerUrl).toHaveBeenCalledWith('http://localhost:3600');
+  });
+
+  it('overwrites stale platform-controller from a previous full-platform install', async() => {
+    config.getPlatformControllerUrl.mockResolvedValue('http://localhost:3600/miso');
+    platformUrl.resolvePlatformControllerUrl.mockResolvedValue('http://localhost:3600');
     await ensureSetupPlatformAuth();
     expect(config.setPlatformControllerUrl).toHaveBeenCalledWith('http://localhost:3600');
     expect(config.setControllerUrl).toHaveBeenCalledWith('http://localhost:3600');

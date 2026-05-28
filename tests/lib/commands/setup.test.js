@@ -11,7 +11,10 @@
 jest.mock('../../../lib/infrastructure');
 jest.mock('../../../lib/core/config', () => ({
   setDeveloperId: jest.fn().mockResolvedValue(undefined),
-  setAdminEmail: jest.fn().mockResolvedValue(undefined)
+  setAdminEmail: jest.fn().mockResolvedValue(undefined),
+  setSetupPlatformMode: jest.fn().mockResolvedValue('single'),
+  getConfig: jest.fn().mockResolvedValue({}),
+  saveConfig: jest.fn().mockResolvedValue(undefined)
 }));
 jest.mock('../../../lib/commands/setup-prompts', () => ({
   MODE: {
@@ -32,11 +35,19 @@ jest.mock('../../../lib/commands/setup-prompts', () => ({
 }));
 jest.mock('../../../lib/commands/setup-modes');
 jest.mock('../../../lib/utils/logger');
+jest.mock('../../../lib/commands/setup-prompts-platform-mode', () => ({
+  promptSetupPlatformMode: jest.fn().mockResolvedValue('single')
+}));
+jest.mock('../../../lib/commands/setup-platform-auth', () => ({
+  syncPlatformControllerUrlsInConfig: jest.fn().mockResolvedValue('http://localhost:3600'),
+  ensureSetupPlatformAuth: jest.fn()
+}));
 
 const infra = require('../../../lib/infrastructure');
 const config = require('../../../lib/core/config');
 const prompts = require('../../../lib/commands/setup-prompts');
 const modes = require('../../../lib/commands/setup-modes');
+const setupPlatformAuth = require('../../../lib/commands/setup-platform-auth');
 const logger = require('../../../lib/utils/logger');
 
 const { handleSetup, isInfraRunning, dispatchMode } = require('../../../lib/commands/setup');
@@ -119,6 +130,7 @@ describe('lib/commands/setup', () => {
       await handleSetup({});
 
       expect(prompts.promptAdminCredentials).toHaveBeenCalled();
+      expect(setupPlatformAuth.syncPlatformControllerUrlsInConfig).toHaveBeenCalled();
       expect(config.setAdminEmail).toHaveBeenCalledWith('admin@example.com');
       expect(modes.runFreshInstall).toHaveBeenCalledWith({
         adminEmail: 'admin@example.com',

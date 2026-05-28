@@ -24,6 +24,7 @@ describe('lib/utils/platform-controller-url', () => {
     config.getDeveloperId.mockResolvedValue('0');
     config.getConfig.mockResolvedValue({ traefik: false, tlsEnabled: false });
     config.getRemoteServer.mockResolvedValue(null);
+    config.getSetupPlatformMode.mockResolvedValue('single');
     pathsUtil.getBuilderPath.mockReturnValue('/work/builder/miso-controller');
     pathsUtil.resolveApplicationConfigPath.mockReturnValue('/work/builder/miso-controller/application.yaml');
     loadConfigFile.mockReturnValue({
@@ -41,9 +42,20 @@ describe('lib/utils/platform-controller-url', () => {
 
   it('appends front-door path when Traefik routing is active', async() => {
     config.getConfig.mockResolvedValue({ traefik: true, tlsEnabled: false });
+    config.getSetupPlatformMode.mockResolvedValue('single');
     computePublicUrlBaseString.mockReturnValue('https://dev01.builder.local');
     const url = await computeAppBaseUrl('miso-controller');
     expect(url).toContain('/miso');
+  });
+
+  it('uses app port (3000 + dev*100) for full mode localhost front door', async() => {
+    config.getDeveloperId.mockResolvedValue('6');
+    config.getConfig.mockResolvedValue({ traefik: true, tlsEnabled: false });
+    config.getSetupPlatformMode.mockResolvedValue('full');
+    // computePublicUrlBaseString will be ignored by the full-mode localhost branch
+    computePublicUrlBaseString.mockReturnValue('http://localhost:9999');
+    const url = await resolvePlatformControllerUrl();
+    expect(url).toBe('http://localhost:3600/miso');
   });
 
   it('[EDGE] uses developer-scoped localhost port when dev id is 6 and Traefik off', async() => {

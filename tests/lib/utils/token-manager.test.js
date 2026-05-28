@@ -1465,19 +1465,79 @@ describe('Token Manager Module', () => {
       }).not.toThrow();
     });
 
+    it('should use API_KEY env var when token is missing', () => {
+      const prev = process.env.API_KEY;
+      process.env.API_KEY = 'local-api-key';
+      const auth = {};
+
+      expect(() => {
+        tokenManager.requireBearerForDataplanePipeline(auth);
+      }).not.toThrow();
+      expect(auth.token).toBe('local-api-key');
+      expect(auth.type).toBe('bearer');
+
+      if (prev === undefined) {
+        delete process.env.API_KEY;
+      } else {
+        process.env.API_KEY = prev;
+      }
+    });
+
+    it('should prefer API_KEY even when authConfig is bearer', () => {
+      const prev = process.env.API_KEY;
+      process.env.API_KEY = 'local-api-key';
+      const auth = { type: 'bearer', token: 'device-token' };
+
+      expect(() => {
+        tokenManager.requireBearerForDataplanePipeline(auth);
+      }).not.toThrow();
+      expect(auth.token).toBe('local-api-key');
+      expect(auth.type).toBe('bearer');
+
+      if (prev === undefined) {
+        delete process.env.API_KEY;
+      } else {
+        process.env.API_KEY = prev;
+      }
+    });
+
+    it('should prefer API_KEY when authConfig is client-token', () => {
+      const prev = process.env.API_KEY;
+      process.env.API_KEY = 'local-api-key';
+      const auth = { type: 'client-token', token: 'x-client-token-value' };
+
+      expect(() => {
+        tokenManager.requireBearerForDataplanePipeline(auth);
+      }).not.toThrow();
+      expect(auth.token).toBe('local-api-key');
+      expect(auth.type).toBe('bearer');
+
+      if (prev === undefined) {
+        delete process.env.API_KEY;
+      } else {
+        process.env.API_KEY = prev;
+      }
+    });
+
     it('should throw when authConfig has only clientId and clientSecret', () => {
+      const prev = process.env.API_KEY;
+      delete process.env.API_KEY;
       expect(() => {
         tokenManager.requireBearerForDataplanePipeline({
           clientId: 'cid',
           clientSecret: 'secret'
         });
       }).toThrow('Dataplane pipeline endpoints require OAuth2 (Bearer token)');
+      if (prev !== undefined) process.env.API_KEY = prev;
     });
 
     it('should throw when authConfig has only clientId', () => {
+      const prev = process.env.API_KEY;
+      delete process.env.API_KEY;
       expect(() => {
         tokenManager.requireBearerForDataplanePipeline({ clientId: 'cid' });
       }).toThrow('Dataplane pipeline endpoints require OAuth2 (Bearer token)');
+      if (prev !== undefined) process.env.API_KEY = prev;
     });
 
     it('should not throw when authConfig is empty (no token, no client creds)', () => {

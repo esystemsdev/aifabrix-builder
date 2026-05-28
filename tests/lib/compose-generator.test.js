@@ -161,6 +161,21 @@ describe('Compose Generator Module', () => {
       expect(t.path).toBe('/data');
     });
 
+    it('buildTraefikConfig uses localhost host when remote-server is missing (browser reachability)', () => {
+      const cfg = {
+        frontDoorRouting: {
+          enabled: true,
+          pattern: '/data/*',
+          host: '${DEV_USERNAME}.${REMOTE_HOST}',
+          tls: false
+        }
+      };
+      const t = buildTraefikConfig(cfg, 6, null, null);
+      expect(t.enabled).toBe(true);
+      expect(t.host).toBe('localhost');
+      expect(t.path).toBe('/data');
+    });
+
     it('buildTraefikConfig uses bare remote hostname when developer-id is 0', () => {
       const cfg = {
         frontDoorRouting: {
@@ -888,15 +903,10 @@ describe('Compose Generator Module', () => {
       const result = await composeGenerator.generateDockerCompose('test-app', config, {});
       expect(result).toContain('DB_0_PASSWORD');
       expect(result).toContain('DB_1_PASSWORD');
-      // Verify user names use underscores (not hyphens) in CREATE USER and GRANT commands
-      // Note: DROP USER commands will contain old user names with hyphens (for migration)
-      expect(result).toContain('miso_controller_user');
-      expect(result).toContain('miso_logs_user');
-      // Verify CREATE USER commands use underscores; template emits \" for shell escaping in -c
-      expect(result).toContain('CREATE USER \\"miso_controller_user\\"');
-      expect(result).toContain('CREATE USER \\"miso_logs_user\\"');
-      // Verify old user names are only in DROP USER commands (for migration)
-      // Note: Quotes are escaped in YAML output, so check for the pattern without quotes
+      // Compose template now uses DB_* env vars for DB name/user (supports env-scoped resources).
+      expect(result).toContain('$${DB_0_USER}');
+      expect(result).toContain('$${DB_1_USER}');
+      // Verify old user names are still dropped (migration from hyphenated names).
       expect(result).toContain('DROP USER IF EXISTS');
       expect(result).toContain('miso-controller_user');
       expect(result).toContain('miso-logs_user');
@@ -979,8 +989,8 @@ describe('Compose Generator Module', () => {
 
       const result = await composeGenerator.generateDockerCompose('test-app', config, {});
       expect(result).toContain('CREATE EXTENSION IF NOT EXISTS "vector";');
-      expect(result).toContain('dataplane-vector');
-      expect(result).toContain('Extension "vector" enabled on "dataplane-vector"');
+      expect(result).toContain('$${DB_1_NAME}');
+      expect(result).toContain('Extension \\"vector\\" enabled on \\"$${DB_1_NAME}\\".');
     });
 
     it('should not include CREATE EXTENSION when no database name ends with vector and no extensions', async() => {
@@ -1022,7 +1032,7 @@ describe('Compose Generator Module', () => {
       };
 
       const result = await composeGenerator.generateDockerCompose('test-app', config, {});
-      expect(result).toContain('flowise');
+      expect(result).toContain('$${DB_0_NAME}');
       expect(result).toContain('CREATE EXTENSION IF NOT EXISTS "pgcrypto";');
       expect(result).toContain('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
       expect(result).toContain('CREATE EXTENSION IF NOT EXISTS "vector";');
@@ -1045,7 +1055,7 @@ describe('Compose Generator Module', () => {
 
       const result = await composeGenerator.generateDockerCompose('test-app', config, {});
       expect(result).toContain('CREATE EXTENSION IF NOT EXISTS "vector";');
-      expect(result).toContain('dataplane-vector');
+      expect(result).toContain('$${DB_0_NAME}');
     });
 
   });
@@ -1535,6 +1545,32 @@ describe('Compose Generator Module', () => {
         const result = await composeGenerator.generateDockerCompose('dataplane', config, options);
         expect(result).toContain(
           'cd /app && python -m uvicorn app.main:app --host 0.0.0.0 --port $$PORT --reload'
+        );
+        expect(result).toMatch(/PORT=3001/);
+      });
+
+      it('should pass build.reloadStart through compose command when devMountPath is set', async() => {
+        const actualDevDir = await getAndEnsureDevDir('dataplane');
+        const envPath = path.join(actualDevDir, '.env');
+        fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
+
+        const config = {
+          app: { key: 'dataplane' },
+          port: 3001,
+          requires: { database: true },
+          build: {
+            language: 'python',
+            reloadStart:
+              'WATCHFILES_FORCE_POLLING=1 uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-3001} --reload --reload-dir /app/app'
+          }
+        };
+        const options = { devMountPath: '/workspace/aifabrix-dataplane' };
+
+        const result = await composeGenerator.generateDockerCompose('dataplane', config, options);
+        expect(result).not.toContain('- WATCHFILES_FORCE_POLLING=1');
+        expect(result).toContain('--reload-dir /app/app');
+        expect(result).toContain(
+          'cd /app && WATCHFILES_FORCE_POLLING=1 python -m uvicorn app.main:app --host 0.0.0.0 --port $$PORT --reload --reload-dir /app/app'
         );
         expect(result).toMatch(/PORT=3001/);
       });

@@ -68,7 +68,8 @@ jest.mock('../../../lib/utils/token-manager', () => ({
 }));
 
 jest.mock('../../../lib/api/deployments.api', () => ({
-  deployEnvironment: jest.fn()
+  deployEnvironment: jest.fn(),
+  getDeployment: jest.fn()
 }));
 
 jest.mock('../../../lib/api/environments.api', () => ({
@@ -106,6 +107,8 @@ const { deployEnvironment } = require('../../../lib/deployment/environment');
 describe('Environment Deployment Module', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    deploymentsApi.getDeployment.mockReset();
+    pipelineApi.getPipelineDeployment.mockReset();
     resolveControllerUrl.mockResolvedValue('http://localhost:3000');
     jest.spyOn(process, 'exit').mockImplementation(() => {});
   });
@@ -558,6 +561,49 @@ describe('Environment Deployment Module', () => {
       expect(result.status).toBe('ready');
     });
 
+    it('should fail fast when polling returns environment not found (404)', async() => {
+      jest.useFakeTimers({ advanceTimers: true });
+
+      const envKey = 'tst';
+      const controllerUrl = 'http://localhost:3610';
+      const mockToken = {
+        token: 'test-token',
+        controller: controllerUrl
+      };
+      const mockDeploymentResponse = {
+        success: true,
+        data: {
+          deploymentId: 'cmpod87gi0001b1gzr73k0ove',
+          status: 'initiated'
+        }
+      };
+      const notFound = {
+        success: false,
+        status: 404,
+        error: 'Environment with key \'tst\' not found',
+        formattedError: 'Environment with key \'tst\' not found'
+      };
+
+      getOrRefreshDeviceToken.mockResolvedValue(mockToken);
+      deploymentsApi.deployEnvironment.mockResolvedValue(mockDeploymentResponse);
+      pipelineApi.getPipelineDeployment.mockResolvedValue(notFound);
+      deploymentsApi.getDeployment.mockResolvedValue(notFound);
+
+      const deployPromise = deployEnvironment(envKey, { config: FIXTURE_CONFIG, poll: true }).catch(err => err);
+
+      await Promise.resolve();
+      jest.advanceTimersByTime(1000);
+      await jest.runAllTimersAsync();
+      await Promise.resolve();
+
+      jest.useRealTimers();
+
+      const error = await deployPromise;
+      expect(error.message).toContain('Environment with key \'tst\' not found');
+      expect(pipelineApi.getPipelineDeployment).toHaveBeenCalled();
+      expect(deploymentsApi.getDeployment).toHaveBeenCalled();
+    });
+
     it('should handle polling API errors gracefully', async() => {
       jest.useFakeTimers({ advanceTimers: true });
 
@@ -588,6 +634,9 @@ describe('Environment Deployment Module', () => {
       pipelineApi.getPipelineDeployment
         .mockRejectedValueOnce(new Error('Network error'))
         .mockResolvedValue(mockStatusResponse); // Subsequent calls succeed but pending
+      deploymentsApi.getDeployment
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockResolvedValue(mockStatusResponse);
 
       const deployPromise = deployEnvironment(envKey, { config: FIXTURE_CONFIG, poll: true }).catch(err => err); // Catch error to prevent unhandled rejection
 

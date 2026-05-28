@@ -64,7 +64,8 @@ build:
   dockerfile: builder/dataplane/Dockerfile  # Dockerfile path (relative to project root)
   envOutputPath: ../../.env       # Copy to repo root for local dev
   language: python                # Runtime language for template selection (typescript or python)
-  reloadStart: uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-3001} --reload  # PORT set from port above at run time; default 3001 must match port
+  # Dev reload: polling + watch /app/app only (avoids EMFILE on full repo bind-mount). See run_local.py, make af-reload.
+  reloadStart: WATCHFILES_FORCE_POLLING=1 uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-3001} --reload --reload-dir /app/app
   # Pulled-image local compose (no bind-mount): drives `command` in generated docker-compose. Override for non-standard images (e.g. stub ACR tags).
   imageRun: exec python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-3001}
 

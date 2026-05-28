@@ -198,6 +198,21 @@ This ensures each developer gets their own domain for testing, avoiding conflict
 
 Nginx on a shared builder host forwards the **full path** to per-developer Traefik; routing uses **`Host(…)` and `PathPrefix(…)`** from generated compose labels.
 
+#### Local front door (localhost)
+
+When you run the **full platform** topology (`aifabrix setup --platform full`) without configuring `remote-server`, the generated routing rules are designed for browser access on **localhost**:
+
+- **Host**: `localhost`
+- **Base port**: `3000 + developerId×100` (example dev06 → `3600`)
+- **Paths**:
+  - `/miso` (Miso Controller)
+  - `/auth` (Keycloak)
+  - `/data` (Dataplane in `pro`)
+  - `/dev/data` (Dataplane in `dev`)
+  - `/tst/data` (Dataplane in `tst`)
+
+This avoids needing a developer-scoped hostname when you are not using a remote domain.
+
 | Shipped app (template) | `frontDoorRouting.pattern` | Env-scoped prefix (optional) |
 |------------------------|----------------------------|------------------------------|
 | Miso Controller | `/miso/*` | Not used by default (`environmentScopedResources` is off in the template). |

@@ -41,6 +41,10 @@ The shared `aifabrix-secrets` file is **never** modified by `aifabrix setup`. Th
 # Interactive install (fresh or mode menu)
 aifabrix setup
 
+# Choose platform topology explicitly
+aifabrix setup --platform single
+aifabrix setup --platform full
+
 # Skip destructive confirmation prompts (re-install, wipe data) in CI
 aifabrix setup --yes
 ```
@@ -48,6 +52,16 @@ aifabrix setup --yes
 **Options:**
 - `-d, --developer <id>` - Pin developer ID before fresh install (fresh path only; ignored when infra is already up).
 - `-y, --yes` - Skip the destructive confirmation prompts (re-install, wipe data). Does not change which mode runs; pick the mode interactively or set the environment yourself before running.
+- `--platform <mode>` - Platform topology:
+  - **`single`**: direct ports per app, no shared front door, no env-scoped resource prefixes by default.
+  - **`full`**: one front door on `localhost:${3000 + developerId×100}` using path routing; enables env-scoped resources and creates multiple controller environments for `dev`, `tst`, and `pro` in addition to `miso`.
+
+**Platform modes (single vs full):**
+
+| Mode | Front door | Example base URL (dev06) | Dataplane URLs (dev06) |
+| --- | --- | --- | --- |
+| `single` | Off | `http://localhost:3600` | Direct per-app port (no `/dev` or `/tst` path prefixes) |
+| `full` | On | `http://localhost:3600/miso` | `http://localhost:3600/data` (pro), `http://localhost:3600/dev/data` (dev), `http://localhost:3600/tst/data` (tst) |
 
 **Issues:**
 - **"Postgres container not running" during wipe-data mode** → Run `aifabrix up-infra` first, then re-run `aifabrix setup`.

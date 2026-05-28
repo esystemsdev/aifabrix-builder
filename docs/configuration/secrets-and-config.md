@@ -105,6 +105,7 @@ Use **`--no-register-env`** to only update `config.yaml`. **New terminals** pick
 | **`aifabrix-work`** | Optional workspace root. When set (or **`AIFABRIX_WORK`** is set), platform **`builder/keycloak`**, **`builder/miso-controller`**, and **`builder/dataplane`** materialize under that tree; when unset, they use **aifabrix-home**. See [Developer isolation](../commands/developer-isolation.md#aifabrix-dev-set-work). |
 | **`developer-id`** | Used by **`aifabrix up-infra`**. |
 | **`format`** | Default `json` \| `yaml` — **`aifabrix dev set-format`**; used when commands omit `--format`. |
+| **`setupPlatformMode`** | Platform topology chosen by **`aifabrix setup`**: `single` (direct ports) or `full` (one front door + multiple controller environments). In full mode, setup also enables `traefik: true` and `useEnvironmentScopedResources: true`. |
 | **`useEnvironmentScopedResources`** | Optional; default **off**. When **on**, local resolution and **`aifabrix run`** can use env-prefixed resource names for apps with **`environmentScopedResources: true`** in **`application.yaml`**, only **dev** / **tst**. Prefer **`aifabrix dev set-scoped-resources`**. |
 | **`traefik`** | Set by **`aifabrix up-infra --traefik`**. |
 | **`platform-controller`** | Absolute Miso Controller URL for local platform install (written by **`aifabrix setup`**; same rules as the **Platform Ready** footer — localhost + dev port or Traefik/`remote-server`). |

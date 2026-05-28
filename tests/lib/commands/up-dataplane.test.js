@@ -26,6 +26,7 @@ jest.mock('chalk', () => {
 jest.mock('../../../lib/core/config', () => ({
   getConfig: jest.fn(),
   resolveEnvironment: jest.fn(),
+  getDeveloperId: jest.fn().mockResolvedValue('0'),
   getAifabrixBuilderDir: jest.fn().mockResolvedValue(null),
   setControllerUrl: jest.fn().mockResolvedValue()
 }));

@@ -39,6 +39,10 @@ jest.mock('../../../lib/utils/controller-url', () => ({
   resolveControllerUrl: jest.fn()
 }));
 
+jest.mock('../../../lib/utils/platform-controller-url', () => ({
+  resolvePlatformControllerUrl: jest.fn().mockResolvedValue('http://localhost:3600')
+}));
+
 const path = require('path');
 const pathsUtil = require('../../../lib/utils/paths');
 const configFormat = require('../../../lib/utils/config-format');
@@ -64,6 +68,7 @@ jest.mock('../../../lib/utils/config-format', () => ({
 const fs = require('fs');
 const config = require('../../../lib/core/config');
 const controllerUrlMod = require('../../../lib/utils/controller-url');
+const platformControllerUrlMod = require('../../../lib/utils/platform-controller-url');
 const {
   applyUpPlatformForceConfig,
   cleanBuilderAppDirs,
@@ -332,19 +337,19 @@ describe('up-common applyUpPlatformForceConfig', () => {
     jest.spyOn(config, 'setCurrentEnvironment').mockResolvedValue(undefined);
     jest.spyOn(config, 'setControllerUrl').mockResolvedValue(undefined);
     jest.spyOn(config, 'setPlatformControllerUrl').mockResolvedValue(undefined);
-    controllerUrlMod.getDefaultControllerUrl.mockResolvedValue('http://localhost:3600');
+    platformControllerUrlMod.resolvePlatformControllerUrl.mockResolvedValue('http://localhost:3600');
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  it('clears tokens, sets environment to dev, and sets controller from developer-id default URL', async() => {
+  it('clears tokens, sets environment to dev, and sets controller from platform topology', async() => {
     await applyUpPlatformForceConfig();
     expect(config.clearAllDeviceTokens).toHaveBeenCalledTimes(1);
     expect(config.clearAllClientTokens).toHaveBeenCalledTimes(1);
     expect(config.setCurrentEnvironment).toHaveBeenCalledWith('dev');
-    expect(controllerUrlMod.getDefaultControllerUrl).toHaveBeenCalledTimes(1);
+    expect(platformControllerUrlMod.resolvePlatformControllerUrl).toHaveBeenCalledTimes(1);
     expect(config.setControllerUrl).toHaveBeenCalledWith('http://localhost:3600');
     expect(config.setPlatformControllerUrl).toHaveBeenCalledWith('http://localhost:3600');
   });

@@ -30,6 +30,7 @@ jest.mock('../../../lib/commands/up-dataplane');
 jest.mock('../../../lib/commands/up-common');
 jest.mock('../../../lib/commands/setup-prompts');
 jest.mock('../../../lib/commands/setup-platform-auth', () => ({
+  syncPlatformControllerUrlsInConfig: jest.fn().mockResolvedValue('http://localhost:3600'),
   ensureSetupPlatformAuth: jest.fn().mockResolvedValue({
     platformControllerUrl: 'http://localhost:3600',
     skipLoginIfAuthenticated: false,
@@ -431,6 +432,7 @@ describe('lib/commands/setup-modes', () => {
 
       await modes.runReinstall();
 
+      expect(setupPlatformAuth.syncPlatformControllerUrlsInConfig).toHaveBeenCalled();
       expect(order[0]).toBe('down');
       expect(order).toContain('pull');
       expect(order).toContain('up-infra');

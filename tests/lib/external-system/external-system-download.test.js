@@ -104,6 +104,7 @@ describe('External System Download Module', () => {
   const systemKey = 'hubspot';
   const appPath = path.join(process.cwd(), 'integration', systemKey);
   const tempDir = path.join(os.tmpdir(), `aifabrix-download-${systemKey}-123456`);
+  const prevApiKey = process.env.API_KEY;
 
   const mockApplication = {
     key: 'hubspot',
@@ -179,6 +180,7 @@ describe('External System Download Module', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    delete process.env.API_KEY;
     fs.writeFileSync.mockImplementation(() => {});
     resolveDataplaneUrl.mockResolvedValue('http://dataplane:8080');
     getDeploymentAuth.mockResolvedValue({
@@ -211,6 +213,14 @@ describe('External System Download Module', () => {
     fsPromises.writeFile.mockResolvedValue(undefined);
     fsPromises.copyFile.mockResolvedValue(undefined);
     fsPromises.rm.mockResolvedValue(undefined);
+  });
+
+  afterAll(() => {
+    if (prevApiKey === undefined) {
+      delete process.env.API_KEY;
+    } else {
+      process.env.API_KEY = prevApiKey;
+    }
   });
 
   describe('validateSystemType', () => {
@@ -455,14 +465,19 @@ describe('External System Download Module', () => {
     });
 
     it('should throw error when authentication is missing', async() => {
+      const prev = process.env.API_KEY;
+      delete process.env.API_KEY;
       getDeploymentAuth.mockResolvedValue({});
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
       await expect(
         downloadExternalSystem(systemKey, { force: true })
       ).rejects.toThrow('Authentication required');
+      if (prev !== undefined) process.env.API_KEY = prev;
     });
 
     it('should throw when auth has client credentials but no token (requireBearerForDataplanePipeline)', async() => {
+      const prev = process.env.API_KEY;
+      delete process.env.API_KEY;
       getDeploymentAuth.mockResolvedValue({
         clientId: 'client-id',
         clientSecret: 'client-secret'
@@ -471,6 +486,7 @@ describe('External System Download Module', () => {
       await expect(
         downloadExternalSystem(systemKey, { force: true })
       ).rejects.toThrow('Dataplane pipeline endpoints require OAuth2 (Bearer token)');
+      if (prev !== undefined) process.env.API_KEY = prev;
     });
 
     it('should throw when config returns 401 and system not in list', async() => {

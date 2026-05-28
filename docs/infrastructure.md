@@ -17,6 +17,33 @@ aifabrix setup
 
 **What you get:** shared infra (Postgres, Redis, optional pgAdmin and Redis Commander), then Keycloak, Miso Controller, and Dataplane containers. Setup runs `up-infra` and `up-platform` for you.
 
+### Platform topology (single vs full)
+
+Setup supports two platform topologies:
+
+| Mode | Use when | What it changes |
+| --- | --- | --- |
+| **single** | You want the classic “direct ports per app” local install | No shared front door. No env-scoped resource prefixes by default. |
+| **full** | You want one front door URL and multiple controller environments (`miso`, `dev`, `tst`, `pro`) | Enables path routing on `localhost:${3000 + developerId×100}` and enables env-scoped resources so `dev` and `tst` can use prefixed paths. |
+
+**Examples (developer-id 06):**
+
+```bash
+# Direct ports per app (classic)
+aifabrix setup --platform single
+
+# One front door + multiple environments
+aifabrix setup --platform full
+```
+
+In **full** mode, the front door uses a single base URL (example `dev06`):
+
+- `http://localhost:3600/miso` (Miso Controller)
+- `http://localhost:3600/auth` (Keycloak)
+- `http://localhost:3600/data` (Dataplane in `pro`)
+- `http://localhost:3600/dev/data` (Dataplane in `dev`)
+- `http://localhost:3600/tst/data` (Dataplane in `tst`)
+
 **Images:** Every setup path (fresh install and all three mode-menu choices) runs `docker compose pull` / `docker pull` for infra and platform apps before services restart.
 
 **First run:** Image pulls and container startup typically take a few minutes. Watch the terminal until setup reports success.

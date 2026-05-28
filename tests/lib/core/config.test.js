@@ -87,6 +87,7 @@ describe('Config Module', () => {
         ...mockConfig,
         'developer-id': '0',
         environment: 'dev',
+        setupPlatformMode: 'single',
         environments: {},
         device: {},
         useEnvironmentScopedResources: false
@@ -109,6 +110,7 @@ describe('Config Module', () => {
         ...mockConfig,
         'developer-id': '5', // getConfig converts numbers to strings
         environment: 'dev',
+        setupPlatformMode: 'single',
         environments: {},
         device: {},
         useEnvironmentScopedResources: false
@@ -126,6 +128,7 @@ describe('Config Module', () => {
       expect(result).toEqual({
         'developer-id': '0',
         environment: 'dev',
+        setupPlatformMode: 'single',
         controller: undefined,
         environments: {},
         device: {},
@@ -142,6 +145,7 @@ describe('Config Module', () => {
       expect(result).toEqual({
         'developer-id': '0',
         environment: 'dev',
+        setupPlatformMode: 'single',
         environments: {},
         device: {},
         useEnvironmentScopedResources: false
@@ -156,6 +160,7 @@ describe('Config Module', () => {
       expect(result).toEqual({
         'developer-id': '0',
         environment: 'dev',
+        setupPlatformMode: 'single',
         environments: {},
         device: {},
         useEnvironmentScopedResources: false

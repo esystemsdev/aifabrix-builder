@@ -1267,7 +1267,7 @@ describe('repair', () => {
         expect(result.warnings.some((w) => w.includes('testEndpoint is missing for apikey'))).toBe(true);
       });
 
-      it('sets bearerKey preset (apikey + Authorization Bearer) and warns when testEndpoint missing', async() => {
+      it('sets bearerKey auth and warns when testEndpoint missing', async() => {
         const envTemplatePath = path.join(appPath, 'env.template');
         existsSyncSpy.mockImplementation((p) => {
           const s = String(p);
@@ -1303,7 +1303,7 @@ describe('repair', () => {
         buildAuthenticationFromMethod.mockImplementation((systemKey, method) => ({
           method,
           variables: { baseUrl: 'https://api.example.com', headerName: 'X-API-Key' },
-          security: { apiKey: `kv://${systemKey}/apiKey` }
+          security: method === 'bearerKey' ? { token: `kv://${systemKey}/token` } : { apiKey: `kv://${systemKey}/apiKey` }
         }));
         generator.generateDeployJson.mockResolvedValue(path.join(appPath, 'hubspot-deploy.json'));
 
@@ -1311,12 +1311,10 @@ describe('repair', () => {
 
         expect(result.updated).toBe(true);
         expect(result.changes.some((c) => c.includes('bearerKey'))).toBe(true);
-        expect(result.warnings.some((w) => w.includes('testEndpoint is missing for apikey'))).toBe(true);
+        expect(result.warnings.some((w) => w.includes('testEndpoint is missing for apikey/bearerKey'))).toBe(true);
         expect(Array.isArray(result.changedFiles) && result.changedFiles.length > 0).toBe(true);
         const systemWrite = writeConfigFile.mock.calls.find((c) => c[0].endsWith('hubspot-system.yaml'));
-        expect(systemWrite[1].authentication.method).toBe('apikey');
-        expect(systemWrite[1].authentication.variables.headerName).toBe('Authorization');
-        expect(systemWrite[1].authentication.variables.prefix).toBe('Bearer');
+        expect(systemWrite[1].authentication.method).toBe('bearerKey');
         expect(systemWrite[1].authentication.variables.baseUrl).toBe('https://api.hubapi.com');
         writeFileSyncSpy.mockRestore();
       });
