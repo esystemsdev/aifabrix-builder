@@ -444,16 +444,16 @@ Read one secret by key. **Default:** local user `secrets.local.yaml` only (same 
 **Usage:**
 ```bash
 # Local file check (fails if key is only in the shared team file)
-aifabrix secret get hubspot-demo/apiKey --exists
+aifabrix secret get hubspot-demo/token --exists
 
 # Team/shared store check
-aifabrix secret get hubspot-demo/apiKey --shared --exists
+aifabrix secret get hubspot-demo/token --shared --exists
 
 # Print decrypted value from local file
 aifabrix secret get myapp/clientSecret
 
 # JSON from shared store
-aifabrix secret get hubspot-demo/apiKey --shared --json
+aifabrix secret get hubspot-demo/token --shared --json
 ```
 
 **Options:**

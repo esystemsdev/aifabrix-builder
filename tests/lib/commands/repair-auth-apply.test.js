@@ -85,7 +85,7 @@ describe('repair-auth-apply', () => {
         authentication: {
           method: 'apikey',
           variables: { baseUrl: 'https://api.hubapi.com', headerName: 'X-API-Key' },
-          security: { apiKey: 'kv://hubspot-demo/apiKey' }
+          security: { apiKey: 'kv://hubspot-demo/token' }
         }
       },
       warnings

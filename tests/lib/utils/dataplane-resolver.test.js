@@ -8,11 +8,11 @@
 
 const { resolveDataplaneUrl } = require('../../../lib/utils/dataplane-resolver');
 const { discoverDataplaneUrl } = require('../../../lib/commands/wizard-dataplane');
-const { computeAppBaseUrl } = require('../../../lib/utils/platform-controller-url');
+const config = require('../../../lib/core/config');
 
 jest.mock('../../../lib/commands/wizard-dataplane');
-jest.mock('../../../lib/utils/platform-controller-url', () => ({
-  computeAppBaseUrl: jest.fn()
+jest.mock('../../../lib/core/config', () => ({
+  getDeveloperId: jest.fn()
 }));
 
 describe('Dataplane Resolver', () => {
@@ -42,8 +42,7 @@ describe('Dataplane Resolver', () => {
       );
     });
 
-    it('should use DP from env when AIFABRIX_DEPLOYMENT_AUTH=client-credentials', async() => {
-      process.env.AIFABRIX_DEPLOYMENT_AUTH = 'client-credentials';
+    it('should use DP from env for any auth mode', async() => {
       process.env.DP = 'http://localhost:3611';
 
       const result = await resolveDataplaneUrl(
@@ -56,9 +55,9 @@ describe('Dataplane Resolver', () => {
       expect(discoverDataplaneUrl).not.toHaveBeenCalled();
     });
 
-    it('should align stale localhost controller URL to builder dataplane port', async() => {
+    it('should align stale localhost controller URL to DATAPLANE_PUBLIC_PORT formula', async() => {
       discoverDataplaneUrl.mockResolvedValue('http://localhost:3601');
-      computeAppBaseUrl.mockResolvedValue('http://localhost:3611');
+      config.getDeveloperId.mockResolvedValue('6');
 
       const result = await resolveDataplaneUrl(
         'http://localhost:3600',
@@ -67,7 +66,19 @@ describe('Dataplane Resolver', () => {
       );
 
       expect(result).toBe('http://localhost:3611');
-      expect(computeAppBaseUrl).toHaveBeenCalledWith('dataplane');
+    });
+
+    it('should keep controller URL when it already matches developer host port', async() => {
+      discoverDataplaneUrl.mockResolvedValue('http://localhost:3611');
+      config.getDeveloperId.mockResolvedValue('6');
+
+      const result = await resolveDataplaneUrl(
+        'http://localhost:3600',
+        'dev',
+        { token: 'test-token' }
+      );
+
+      expect(result).toBe('http://localhost:3611');
     });
 
     it('should re-throw errors from discovery', async() => {
