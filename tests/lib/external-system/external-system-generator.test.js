@@ -234,7 +234,7 @@ fieldMappings:
       { method: 'oauth2', hasSecurity: true, securityKeys: ['clientId', 'clientSecret'] },
       { method: 'aad', hasSecurity: true, securityKeys: ['clientId', 'clientSecret'] },
       { method: 'apikey', hasSecurity: true, securityKeys: ['apiKey'] },
-      { method: 'bearerKey', hasSecurity: true, securityKeys: ['token'] },
+      { method: 'bearerToken', hasSecurity: true, securityKeys: ['token'] },
       { method: 'basic', hasSecurity: true, securityKeys: ['username', 'password'] },
       { method: 'queryParam', hasSecurity: true, securityKeys: ['paramValue'] },
       { method: 'oidc', hasSecurity: false, securityKeys: [] },
@@ -292,7 +292,7 @@ fieldMappings:
     it('buildAuthenticationFromMethod returns canonical paths for apikey and oauth2', () => {
       const { buildAuthenticationFromMethod } = require('../../../lib/external-system/generator');
       expect(buildAuthenticationFromMethod('demo', 'apikey').security.apiKey).toBe('kv://demo/apiKey');
-      expect(buildAuthenticationFromMethod('demo', 'bearerKey').security.token).toBe('kv://demo/token');
+      expect(buildAuthenticationFromMethod('demo', 'bearerToken').security.token).toBe('kv://demo/token');
       const oauth2 = buildAuthenticationFromMethod('demo', 'oauth2');
       expect(oauth2.security.clientId).toBe('kv://demo/clientId');
       expect(oauth2.security.clientSecret).toBe('kv://demo/clientSecret');

@@ -2,7 +2,7 @@ appName: wizard-e2e-env-vars
 mode: create-system
 source:
   type: openapi-file
-  filePath: ./integration/hubspot-test/companies.json
+  filePath: /workspace/aifabrix-builder/integration/hubspot-test/companies.json
 deployment:
   controller: ${CONTROLLER_URL}
   dataplane: ${DATAPLANE_URL}

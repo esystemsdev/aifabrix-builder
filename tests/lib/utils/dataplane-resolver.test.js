@@ -8,8 +8,12 @@
 
 const { resolveDataplaneUrl } = require('../../../lib/utils/dataplane-resolver');
 const { discoverDataplaneUrl } = require('../../../lib/commands/wizard-dataplane');
+const { computeAppBaseUrl } = require('../../../lib/utils/platform-controller-url');
 
 jest.mock('../../../lib/commands/wizard-dataplane');
+jest.mock('../../../lib/utils/platform-controller-url', () => ({
+  computeAppBaseUrl: jest.fn()
+}));
 
 describe('Dataplane Resolver', () => {
   beforeEach(() => {
@@ -50,6 +54,20 @@ describe('Dataplane Resolver', () => {
 
       expect(result).toBe('http://localhost:3611');
       expect(discoverDataplaneUrl).not.toHaveBeenCalled();
+    });
+
+    it('should align stale localhost controller URL to builder dataplane port', async() => {
+      discoverDataplaneUrl.mockResolvedValue('http://localhost:3601');
+      computeAppBaseUrl.mockResolvedValue('http://localhost:3611');
+
+      const result = await resolveDataplaneUrl(
+        'http://localhost:3600',
+        'dev',
+        { token: 'test-token' }
+      );
+
+      expect(result).toBe('http://localhost:3611');
+      expect(computeAppBaseUrl).toHaveBeenCalledWith('dataplane');
     });
 
     it('should re-throw errors from discovery', async() => {

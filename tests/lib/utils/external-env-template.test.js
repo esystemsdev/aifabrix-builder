@@ -112,6 +112,23 @@ describe('external-env-template', () => {
       expect(ctx.configuration[0].comment).toMatch(/enum|v1|v2|v3/);
     });
 
+    it('uses token security for bearerToken auth method', () => {
+      const system = {
+        key: 'hubspot-demo',
+        authentication: {
+          method: 'bearerToken',
+          security: { token: 'kv://hubspot-demo/token' },
+          variables: { baseUrl: 'https://api.hubapi.com' }
+        }
+      };
+      const ctx = buildExternalEnvTemplateContext(system);
+      expect(ctx.authMethod).toBe('bearertoken');
+      expect(ctx.authSecureVars).toHaveLength(1);
+      expect(ctx.authSecureVars[0].name).toBe('KV_HUBSPOT_DEMO_TOKEN');
+      expect(ctx.authSecureVars[0].value).toContain('kv://hubspot-demo/');
+      expect(ctx.authSecureVars.some((v) => v.name.includes('APIKEY'))).toBe(false);
+    });
+
     it('handles missing authentication and configuration (fallback apikey vars)', () => {
       const ctx = buildExternalEnvTemplateContext({ key: 'minimal' });
       expect(ctx.authMethod).toBe('apikey');

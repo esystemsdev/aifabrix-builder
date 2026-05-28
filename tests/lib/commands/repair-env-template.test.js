@@ -312,6 +312,31 @@ describe('repair-env-template', () => {
       expect(writeFileSyncSpy).not.toHaveBeenCalled();
     });
 
+    it('comments stale apiKey KV line when system auth is bearerToken', () => {
+      const envPath = path.join(appPath, 'env.template');
+      const existingContent = [
+        'KV_HUBSPOT_DEMO_APIKEY=kv://hubspot-demo/apiKey',
+        'KV_HUBSPOT_DEMO_TOKEN=kv://hubspot-demo/token',
+        ''
+      ].join('\n');
+      existsSyncSpy.mockReturnValue(true);
+      readFileSyncSpy.mockImplementation(p => (p === envPath ? existingContent : ''));
+      const systemParsed = {
+        key: 'hubspot-demo',
+        authentication: {
+          method: 'bearerToken',
+          security: { token: 'kv://hubspot-demo/token' }
+        },
+        configuration: []
+      };
+      const changes = [];
+      const result = repairEnvTemplate(appPath, systemParsed, 'hubspot-demo', false, changes);
+      expect(result).toBe(true);
+      const written = writeFileSyncSpy.mock.calls.find(c => c[0] === envPath);
+      expect(written[1]).toMatch(/^# KV_HUBSPOT_DEMO_APIKEY=/m);
+      expect(written[1]).toMatch(/^KV_HUBSPOT_DEMO_TOKEN=/m);
+    });
+
     it('comments stale OAuth KV lines when system auth is apikey only', () => {
       const envPath = path.join(appPath, 'env.template');
       const existingContent = [

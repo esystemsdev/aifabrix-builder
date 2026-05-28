@@ -252,7 +252,7 @@ Repair external integration config when `application.yaml` drifts from files on 
 - **Stale deploy manifest** — Regenerates `<systemKey>-deploy.json` after config changes
 - **Datasource key and filename normalization** — Repair normalizes datasource keys to `<systemKey>-<resourceType>` (or `<systemKey>-<resourceType>-2`, `-3` for duplicates) and filenames to `<systemKey>-datasource-<suffix>.<ext>`. Keys or filenames that already match the valid pattern (e.g. `customer-extra`, `customer-1`) are left unchanged.
 - **Optional flags** — `--all` runs all repair actions (`--doc --rbac --expose --sync --api --test`) in one go; `--rbac` adds or merges RBAC permissions per datasource and default Admin/Reader roles if none exist, and moves any roles/permissions from the `*-system` file into the rbac file when both are present; `--expose` sets **`exposed.schema`** on each datasource (each key maps to `metadata.<key>` for every `fieldMappings.attributes` key) and removes deprecated `exposed.attributes` if present; `--sync` adds a default sync section (`mode`, `batchSize`) to datasources that lack it (not applied when `entityType` is `none`); `--api` validates and syncs local API contract inputs (like OpenAPI specs at `integration/<systemKey>/openapi/*.json`) so OpenAPI/MCP features can be generated correctly on publish; `--test` rebuilds `testPayload.payloadTemplate` and `testPayload.expectedResult` from attributes and strips unknown top-level `testPayload` keys
-- **Authentication method** — When `--auth <method>` is provided, repair sets the integration’s authentication to that method (canonical variables and security) and updates env.template accordingly. For any repair run, if `authentication.method` is **`apikey`** or **`bearerKey`** and **`testEndpoint`** is empty, repair prints a **warning** (credential/E2E may fail). After repair, the CLI lists **changed file paths** and suggested next steps (`validate`, fix warnings).
+- **Authentication method** — When `--auth <method>` is provided, repair sets the integration’s authentication to that method (canonical variables and security) and updates env.template accordingly. For any repair run, if `authentication.method` is **`apikey`** or **`bearerToken`** and **`testEndpoint`** is empty, repair prints a **warning** (credential/E2E may fail). After repair, the CLI lists **changed file paths** and suggested next steps (`validate`, fix warnings).
 
 **Usage:**
 ```bash
@@ -260,7 +260,7 @@ Repair external integration config when `application.yaml` drifts from files on 
 aifabrix repair hubspot
 
 # Set authentication method (updates system file and env.template)
-aifabrix repair hubspot-demo --auth bearerKey
+aifabrix repair hubspot-demo --auth bearerToken
 
 # Legacy header style (X-API-Key) instead of Authorization Bearer
 aifabrix repair hubspot-demo --auth apikey
@@ -280,7 +280,7 @@ aifabrix repair hubspot --doc
 
 **Options:**
 - `--all` — Run all repair actions (`--doc --rbac --expose --sync --api --test`)
-- `--auth <method>` — Set authentication method (oauth2, aad, apikey, bearerKey, basic, queryParam, oidc, hmac, none); updates the system file and env.template
+- `--auth <method>` — Set authentication method (oauth2, aad, apikey, bearerToken, basic, queryParam, oidc, hmac, none); updates the system file and env.template
 - `--doc` — Regenerate `README.md` from the deployment manifest
 - `--dry-run` — Report what would be changed; do not write
 - `--rbac` — Ensure RBAC has a permission per datasource endpoint (`<resourceType>:<capability>`) and add default Admin/Reader roles if none exist; if roles or permissions still live in the external system file while an `rbac.yaml` / `rbac.json` file exists, repair merges them into that rbac file and removes them from the system file

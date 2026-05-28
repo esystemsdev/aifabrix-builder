@@ -15,21 +15,21 @@ jest.mock('../../../lib/external-system/generator', () => ({
     method,
     variables: { baseUrl: 'https://api.example.com', headerName: 'X-API-Key' },
     security:
-      method === 'bearerKey'
+      method === 'bearerToken'
         ? { token: `kv://${systemKey}/token` }
         : { apiKey: `kv://${systemKey}/apiKey` }
   }))
 }));
 
 describe('repair-auth-apply', () => {
-  it('allows bearerKey as repair-only auth option', () => {
-    expect(isAllowedRepairAuth('bearerKey')).toBe(true);
+  it('allows bearerToken as repair-only auth option', () => {
+    expect(isAllowedRepairAuth('bearerToken')).toBe(true);
     expect(isAllowedRepairAuth('BearerKey')).toBe(true);
   });
 
-  it('buildAuthenticationForRepair emits bearerKey with token secret', () => {
-    const auth = buildAuthenticationForRepair('hubspot-demo', 'bearerKey');
-    expect(auth.method).toBe('bearerKey');
+  it('buildAuthenticationForRepair emits bearerToken with token secret', () => {
+    const auth = buildAuthenticationForRepair('hubspot-demo', 'bearerToken');
+    expect(auth.method).toBe('bearerToken');
     expect(auth.security.token).toBe('kv://hubspot-demo/token');
   });
 
@@ -40,21 +40,21 @@ describe('repair-auth-apply', () => {
       warnings
     );
     expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toMatch(/testEndpoint is missing for apikey\/bearerKey/);
+    expect(warnings[0]).toMatch(/testEndpoint is missing for apikey\/bearerToken/);
   });
 
-  it('appendTestEndpointWarningIfMissing warns for bearerKey without testEndpoint', () => {
+  it('appendTestEndpointWarningIfMissing warns for bearerToken without testEndpoint', () => {
     const warnings = [];
     appendTestEndpointWarningIfMissing(
       {
-        method: 'bearerKey',
+        method: 'bearerToken',
         variables: { baseUrl: 'https://api.hubapi.com', headerName: 'Authorization', prefix: 'Bearer' },
         security: { token: 'kv://hubspot-demo/token' }
       },
       warnings
     );
     expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toMatch(/testEndpoint is missing for apikey\/bearerKey/);
+    expect(warnings[0]).toMatch(/testEndpoint is missing for apikey\/bearerToken/);
   });
 
   it('appendTestEndpointWarningIfMissing is silent when testEndpoint is set', () => {
@@ -72,8 +72,8 @@ describe('repair-auth-apply', () => {
     expect(warnings).toHaveLength(0);
   });
 
-  it('repairAuthChangeLabel describes bearerKey preset', () => {
-    expect(repairAuthChangeLabel('bearerkey')).toBe('bearerKey');
+  it('repairAuthChangeLabel describes bearerToken preset', () => {
+    expect(repairAuthChangeLabel('bearertoken')).toBe('bearerToken');
     expect(repairAuthChangeLabel('apikey')).toBe('apikey');
   });
 
@@ -91,7 +91,7 @@ describe('repair-auth-apply', () => {
       warnings
     );
     expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toMatch(/testEndpoint is missing for apikey\/bearerKey/);
+    expect(warnings[0]).toMatch(/testEndpoint is missing for apikey\/bearerToken/);
   });
 
   it('auditRepairAuthenticationWarnings does not duplicate the testEndpoint warning', () => {

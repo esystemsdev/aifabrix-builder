@@ -84,6 +84,10 @@ const defaultProject = {
       'lib/datasource/log-viewer-structural.test.js',
       'lib/datasource/log-viewer-run.test.js',
       'log-viewer-run\\.test\\.js',
+      '/tests/lib/datasource/audit-evidence-extract.test.js',
+      '\\\\tests\\\\lib\\\\datasource\\\\audit-evidence-extract.test.js',
+      'lib/datasource/audit-evidence-extract.test.js',
+      'audit-evidence-extract\\.test\\.js',
       '/tests/lib/commands/parameters-validate.test.js',
       '\\\\tests\\\\lib\\\\commands\\\\parameters-validate.test.js',
       'lib/commands/parameters-validate.test.js',
@@ -358,6 +362,9 @@ const isolatedProjects = [
     '**/tests/lib/datasource/log-viewer.test.js',
     '**/tests/lib/datasource/log-viewer-structural.test.js',
     '**/tests/lib/datasource/log-viewer-run.test.js'
+  ]),
+  makeIsolatedProject('audit-evidence-extract', [
+    '**/tests/lib/datasource/audit-evidence-extract.test.js'
   ]),
   makeIsolatedProject('manifest-source-emit', ['**/tests/lib/utils/manifest-source-emit.test.js']),
   makeIsolatedProject('register-aifabrix-shell-env', [

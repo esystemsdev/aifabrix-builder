@@ -121,7 +121,7 @@
         "oauth2":{"variables":[{"key":"baseUrl","required":true,"description":"API base URL"},{"key":"tokenUrl","required":true,"description":"OAuth token endpoint. Full URL (https://...) or path (e.g. /oauth/v2/token); path is resolved against baseUrl."},{"key":"authorizationUrl","required":false,"description":"OAuth authorization endpoint. Full URL or path; path is resolved against baseUrl. Required when grantType is authorization_code or omitted."},{"key":"grantType","required":false,"description":"OAuth 2.0 grant type. One of: client_credentials, authorization_code. Default: authorization_code."},{"key":"scope","required":false},{"key":"tenantId","required":false},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL or path (path resolved against baseUrl). If omitted, baseUrl + /health is used."}],"security":[{"key":"clientId","required":true},{"key":"clientSecret","required":true}]},
         "aad":{"variables":[{"key":"baseUrl","required":true},{"key":"tokenUrl","required":true,"description":"Token endpoint. Full URL or path (path resolved against baseUrl)."},{"key":"authorizationUrl","required":false,"description":"Authorization endpoint. Full URL or path (path resolved against baseUrl). Required when grantType is authorization_code or omitted."},{"key":"grantType","required":false,"description":"OAuth 2.0 grant type. One of: client_credentials, authorization_code. Default: authorization_code."},{"key":"tenantId","required":false},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL or path (path resolved against baseUrl). If omitted, baseUrl + /health is used."}],"security":[{"key":"clientId","required":true},{"key":"clientSecret","required":true}]},
         "apikey":{"variables":[{"key":"baseUrl","required":true},{"key":"headerName","required":false},{"key":"prefix","required":false},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL (https://...) or path (e.g. /crm/v3/objects/contacts?limit=1); path is resolved against baseUrl. If omitted, baseUrl + /health is used."}],"security":[{"key":"apiKey","required":true}]},
-        "bearerKey":{"variables":[{"key":"baseUrl","required":true},{"key":"headerName","required":false},{"key":"prefix","required":false},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL (https://...) or path; path is resolved against baseUrl. If omitted, baseUrl + /health is used."}],"security":[{"key":"token","required":true}]},
+        "bearerToken":{"variables":[{"key":"baseUrl","required":true},{"key":"headerName","required":false},{"key":"prefix","required":false},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL (https://...) or path; path is resolved against baseUrl. If omitted, baseUrl + /health is used."}],"security":[{"key":"token","required":true}]},
         "basic":{"variables":[{"key":"baseUrl","required":true},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL or path (path resolved against baseUrl). If omitted, baseUrl + /health is used."}],"security":[{"key":"username","required":true},{"key":"password","required":true}]},
         "queryParam":{"variables":[{"key":"baseUrl","required":true},{"key":"paramName","required":true},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL or path (path resolved against baseUrl). If omitted, baseUrl + /health is used."}],"security":[{"key":"paramValue","required":true}]},
         "oidc":{"variables":[{"key":"openIdConfigUrl","required":true},{"key":"clientId","required":true},{"key":"expectedIssuer","required":false},{"key":"algorithms","required":false},{"key":"validateSignature","required":false},{"key":"clockSkewSeconds","required":false},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL or path. For OIDC, discovery URL is typically used if testEndpoint omitted."}],"security":[]},
@@ -200,7 +200,7 @@
               "enum":[
                  "oauth2",
                  "apikey",
-                 "bearerKey",
+                 "bearerToken",
                  "basic",
                  "aad",
                  "none",
@@ -212,14 +212,14 @@
            },
            "variables":{
               "type":"object",
-              "description":"Non-secret config. See $defs.authenticationVariablesByMethod for per-method keys. oauth2/aad: baseUrl, tokenUrl, authorizationUrl (optional; required when grantType is authorization_code or omitted), grantType (optional, default authorization_code); apikey: baseUrl, headerName (optional), prefix (optional), testEndpoint (optional); bearerKey: baseUrl, headerName (optional), prefix (optional), testEndpoint (optional); basic: baseUrl; queryParam: baseUrl, paramName; oidc: openIdConfigUrl, clientId; hmac: optional; none: empty. URL-valued variables (tokenUrl, authorizationUrl, testEndpoint) accept full URL or path; paths are resolved against baseUrl by the backend.",
+              "description":"Non-secret config. See $defs.authenticationVariablesByMethod for per-method keys. oauth2/aad: baseUrl, tokenUrl, authorizationUrl (optional; required when grantType is authorization_code or omitted), grantType (optional, default authorization_code); apikey: baseUrl, headerName (optional), prefix (optional), testEndpoint (optional); bearerToken: baseUrl, headerName (optional), prefix (optional), testEndpoint (optional); basic: baseUrl; queryParam: baseUrl, paramName; oidc: openIdConfigUrl, clientId; hmac: optional; none: empty. URL-valued variables (tokenUrl, authorizationUrl, testEndpoint) accept full URL or path; paths are resolved against baseUrl by the backend.",
               "additionalProperties":{
                  "type":"string"
               }
            },
            "security":{
               "type":"object",
-              "description":"Secret-bearing keys only. Values must be kv:// references. See $defs.authenticationVariablesByMethod. oauth2/aad: clientId, clientSecret; apikey: apiKey; bearerKey: token; basic: username, password; queryParam: paramValue; oidc: none; hmac: signingSecret.",
+              "description":"Secret-bearing keys only. Values must be kv:// references. See $defs.authenticationVariablesByMethod. oauth2/aad: clientId, clientSecret; apikey: apiKey; bearerToken: token; basic: username, password; queryParam: paramValue; oidc: none; hmac: signingSecret.",
               "additionalProperties":{
                  "type":"string",
                  "pattern":"^kv://.+$"
@@ -235,7 +235,7 @@
            {"method":"oauth2","variables":{"baseUrl":"https://api.example.com","tokenUrl":"https://api.example.com/oauth/token","authorizationUrl":"https://api.example.com/oauth/authorize"},"security":{"clientId":"kv://example/clientId","clientSecret":"kv://example/clientSecret"}},
            {"method":"oauth2","variables":{"baseUrl":"https://api.example.com","tokenUrl":"https://api.example.com/oauth/token","grantType":"client_credentials"},"security":{"clientId":"kv://example/clientId","clientSecret":"kv://example/clientSecret"}},
            {"method":"apikey","variables":{"baseUrl":"https://api.example.com","headerName":"X-API-Key","testEndpoint":"https://api.example.com/health"},"security":{"apiKey":"kv://example/apiKey"}},
-           {"method":"bearerKey","variables":{"baseUrl":"https://api.example.com","headerName":"Authorization","prefix":"Bearer","testEndpoint":"/crm/v3/objects/contacts?limit=1"},"security":{"token":"kv://example/token"}},
+           {"method":"bearerToken","variables":{"baseUrl":"https://api.example.com","headerName":"Authorization","prefix":"Bearer","testEndpoint":"/crm/v3/objects/contacts?limit=1"},"security":{"token":"kv://example/token"}},
            {"method":"apikey","variables":{"baseUrl":"https://api.example.com","headerName":"Authorization","prefix":"Bearer","testEndpoint":"/crm/v3/objects/contacts?limit=1"},"security":{"apiKey":"kv://example/apiKey"}},
            {"method":"basic","variables":{"baseUrl":"https://api.example.com"},"security":{"username":"kv://example/username","password":"kv://example/password"}},
            {"method":"queryParam","variables":{"baseUrl":"https://api.example.com","paramName":"api_key"},"security":{"paramValue":"kv://example/apiKey"}},

@@ -1467,6 +1467,8 @@ describe('Token Manager Module', () => {
 
     it('should use API_KEY env var when token is missing', () => {
       const prev = process.env.API_KEY;
+      const prevDeploymentAuth = process.env.AIFABRIX_DEPLOYMENT_AUTH;
+      delete process.env.AIFABRIX_DEPLOYMENT_AUTH;
       process.env.API_KEY = 'local-api-key';
       const auth = {};
 
@@ -1481,10 +1483,17 @@ describe('Token Manager Module', () => {
       } else {
         process.env.API_KEY = prev;
       }
+      if (prevDeploymentAuth === undefined) {
+        delete process.env.AIFABRIX_DEPLOYMENT_AUTH;
+      } else {
+        process.env.AIFABRIX_DEPLOYMENT_AUTH = prevDeploymentAuth;
+      }
     });
 
     it('should prefer API_KEY even when authConfig is bearer', () => {
       const prev = process.env.API_KEY;
+      const prevDeploymentAuth = process.env.AIFABRIX_DEPLOYMENT_AUTH;
+      delete process.env.AIFABRIX_DEPLOYMENT_AUTH;
       process.env.API_KEY = 'local-api-key';
       const auth = { type: 'bearer', token: 'device-token' };
 
@@ -1499,23 +1508,60 @@ describe('Token Manager Module', () => {
       } else {
         process.env.API_KEY = prev;
       }
+      if (prevDeploymentAuth === undefined) {
+        delete process.env.AIFABRIX_DEPLOYMENT_AUTH;
+      } else {
+        process.env.AIFABRIX_DEPLOYMENT_AUTH = prevDeploymentAuth;
+      }
     });
 
-    it('should prefer API_KEY when authConfig is client-token', () => {
-      const prev = process.env.API_KEY;
+    it('should preserve client-token when token is present', () => {
+      const prevApiKey = process.env.API_KEY;
+      const prevDeploymentAuth = process.env.AIFABRIX_DEPLOYMENT_AUTH;
       process.env.API_KEY = 'local-api-key';
+      process.env.AIFABRIX_DEPLOYMENT_AUTH = 'client-credentials';
       const auth = { type: 'client-token', token: 'x-client-token-value' };
 
       expect(() => {
         tokenManager.requireBearerForDataplanePipeline(auth);
       }).not.toThrow();
-      expect(auth.token).toBe('local-api-key');
-      expect(auth.type).toBe('bearer');
+      expect(auth.token).toBe('x-client-token-value');
+      expect(auth.type).toBe('client-token');
 
-      if (prev === undefined) {
+      if (prevApiKey === undefined) {
         delete process.env.API_KEY;
       } else {
-        process.env.API_KEY = prev;
+        process.env.API_KEY = prevApiKey;
+      }
+      if (prevDeploymentAuth === undefined) {
+        delete process.env.AIFABRIX_DEPLOYMENT_AUTH;
+      } else {
+        process.env.AIFABRIX_DEPLOYMENT_AUTH = prevDeploymentAuth;
+      }
+    });
+
+    it('should keep client-token when token is present even without client-credentials mode', () => {
+      const prevApiKey = process.env.API_KEY;
+      const prevDeploymentAuth = process.env.AIFABRIX_DEPLOYMENT_AUTH;
+      process.env.API_KEY = 'local-api-key';
+      delete process.env.AIFABRIX_DEPLOYMENT_AUTH;
+      const auth = { type: 'client-token', token: 'x-client-token-value' };
+
+      expect(() => {
+        tokenManager.requireBearerForDataplanePipeline(auth);
+      }).not.toThrow();
+      expect(auth.token).toBe('x-client-token-value');
+      expect(auth.type).toBe('client-token');
+
+      if (prevApiKey === undefined) {
+        delete process.env.API_KEY;
+      } else {
+        process.env.API_KEY = prevApiKey;
+      }
+      if (prevDeploymentAuth === undefined) {
+        delete process.env.AIFABRIX_DEPLOYMENT_AUTH;
+      } else {
+        process.env.AIFABRIX_DEPLOYMENT_AUTH = prevDeploymentAuth;
       }
     });
 
@@ -1527,7 +1573,7 @@ describe('Token Manager Module', () => {
           clientId: 'cid',
           clientSecret: 'secret'
         });
-      }).toThrow('Dataplane pipeline endpoints require OAuth2 (Bearer token)');
+      }).toThrow('Dataplane pipeline endpoints require OAuth2 (Bearer token) or x-client-token');
       if (prev !== undefined) process.env.API_KEY = prev;
     });
 
@@ -1536,7 +1582,7 @@ describe('Token Manager Module', () => {
       delete process.env.API_KEY;
       expect(() => {
         tokenManager.requireBearerForDataplanePipeline({ clientId: 'cid' });
-      }).toThrow('Dataplane pipeline endpoints require OAuth2 (Bearer token)');
+      }).toThrow('Dataplane pipeline endpoints require OAuth2 (Bearer token) or x-client-token');
       if (prev !== undefined) process.env.API_KEY = prev;
     });
 

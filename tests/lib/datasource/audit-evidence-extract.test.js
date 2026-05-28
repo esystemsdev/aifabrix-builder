@@ -7,6 +7,9 @@
 
 'use strict';
 
+/** Real disk for schema + fallback; other suites in this worker may jest.mock('fs') or fs-real-sync. */
+jest.unmock('../../../lib/internal/fs-real-sync');
+
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -21,6 +24,11 @@ const { clearCipCapacityDisplayConfigCacheForTests } = require('../../../lib/uti
 
 describe('audit-evidence-extract', () => {
   beforeEach(() => {
+    delete process.env.AIFABRIX_EXTERNAL_DATASOURCE_SCHEMA;
+    clearCipCapacityDisplayConfigCacheForTests();
+  });
+
+  afterEach(() => {
     delete process.env.AIFABRIX_EXTERNAL_DATASOURCE_SCHEMA;
     clearCipCapacityDisplayConfigCacheForTests();
   });

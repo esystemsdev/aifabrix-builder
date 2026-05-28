@@ -18,6 +18,7 @@ const {
   collectKvEnvVarsAsSecretItems,
   collectKvRefsFromPayload,
   pushCredentialSecrets,
+  reconcileBearerTokenSecretPaths,
   kvEnvKeyToPath,
   getKvPathSegmentForSecurityKey,
   systemKeyToKvPrefix,
@@ -211,6 +212,31 @@ describe('credential-secrets-env', () => {
     });
   });
 
+  describe('reconcileBearerTokenSecretPaths', () => {
+    it('should move apiKey-only push to token path for bearerToken', () => {
+      const map = new Map([['kv://test-e2e-hubspot/apiKey', 'pat']]);
+      reconcileBearerTokenSecretPaths(map, 'test-e2e-hubspot', { method: 'bearerToken' });
+      expect(map.has('kv://test-e2e-hubspot/apiKey')).toBe(false);
+      expect(map.get('kv://test-e2e-hubspot/token')).toBe('pat');
+    });
+
+    it('should remove apiKey when token path already set', () => {
+      const map = new Map([
+        ['kv://test-e2e-hubspot/apiKey', 'legacy'],
+        ['kv://test-e2e-hubspot/token', 'canonical']
+      ]);
+      reconcileBearerTokenSecretPaths(map, 'test-e2e-hubspot', { method: 'bearerToken' });
+      expect(map.has('kv://test-e2e-hubspot/apiKey')).toBe(false);
+      expect(map.get('kv://test-e2e-hubspot/token')).toBe('canonical');
+    });
+
+    it('should no-op for apikey auth', () => {
+      const map = new Map([['kv://hubspot/apiKey', 'key']]);
+      reconcileBearerTokenSecretPaths(map, 'hubspot', { method: 'apikey' });
+      expect(map.get('kv://hubspot/apiKey')).toBe('key');
+    });
+  });
+
   describe('pushCredentialSecrets', () => {
     it('should return { pushed: 0, skipped: true } when no items and no .env', async() => {
       const result = await pushCredentialSecrets('https://dp.example.com', { type: 'bearer', token: 't' }, {});
@@ -332,6 +358,28 @@ describe('credential-secrets-env', () => {
         expect.any(Object),
         [{ key: 'kv://secrets/known', value: 'v1' }]
       );
+    });
+
+    it('should drop kv://.../apiKey for bearerToken when token path is present', async() => {
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('KV_TEST_E2E_HUBSPOT_APIKEY=pat-from-env\n');
+      loadSecrets.mockResolvedValue({});
+      storeCredentialSecrets.mockResolvedValue({ success: true, stored: 1 });
+
+      const result = await pushCredentialSecrets('https://dp.example.com', { method: 'bearerToken' }, {
+        envFilePath: '/integration/test-e2e-hubspot/.env',
+        appName: 'test-e2e-hubspot',
+        payload: { authentication: { security: { token: 'kv://test-e2e-hubspot/token' } } }
+      });
+
+      expect(result.pushed).toBe(1);
+      expect(storeCredentialSecrets).toHaveBeenCalledWith(
+        'https://dp.example.com',
+        expect.any(Object),
+        [{ key: 'kv://test-e2e-hubspot/token', value: 'pat-from-env' }]
+      );
+      fs.existsSync.mockRestore();
+      fs.readFileSync.mockRestore();
     });
 
     it('should merge .env and payload sources and dedupe by key', async() => {
