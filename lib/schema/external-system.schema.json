@@ -1,765 +1,1090 @@
 {
-  "$schema":"http://json-schema.org/draft-07/schema#",
-  "$id":"aifabrix://schema/external-system.schema.json",
-  "title":"AI Fabrix External System Configuration Schema",
-  "description":"Schema for configuring an external system connected to the AI Fabrix Dataplane. This defines authentication, system-level OpenAPI/MCP connectivity hints (not the datasource-grade vendor contract; see external-datasource.schema.json root externalSpec), field mappings defaults, metadata handling and portal inputs.",
-     "metadata":{
-     "key":"external-system-schema",
-     "name":"External System Configuration Schema",
-     "description":"JSON schema for validating ExternalSystem configuration files",
-    "version":"1.6.3",
-     "type":"schema",
-     "category":"integration",
-     "author":"AI Fabrix Team",
-     "createdAt":"2024-01-01T00:00:00Z",
-     "updatedAt":"2026-05-10T00:00:00Z",
-     "compatibility":{
-        "minVersion":"1.4.0",
-        "maxVersion":"2.0.0",
-        "deprecated":false
-     },
-     "tags":[
-        "schema",
-        "external-system",
-        "dataplane",
-        "integration",
-        "validation"
-     ],
-     "dependencies":[
-        
-     ],
-     "changelog":[
-        {
-           "version":"1.6.3",
-           "date":"2026-05-10T00:00:00Z",
-           "changes":[
-              "Documented split: system openapi/mcp objects are connectivity and bootstrap hints (specUrl, serverUrl, documentKey); datasource-level vendor/API provenance belongs in external-datasource externalSpec.",
-              "Declared optional openapi.autoDiscoverEntities (wizard/tooling); tightened openapi and mcp to additionalProperties: false."
-           ],
-           "breaking":false
-        },
-        {
-           "version":"1.6.2",
-           "date":"2026-04-23T00:00:00Z",
-           "changes":[
-              "certification.algorithm: RS256 only (removed HS256 from enum)"
-           ]
-        },
-        {
-           "version":"1.6.1",
-           "date":"2026-04-22T00:00:00Z",
-           "changes":[
-              "Optional certification.publicKeyFingerprint (sha256: hex of SPKI DER) for RS256 public key verification"
-           ]
-        },
-        {
-           "version":"1.6.0",
-           "date":"2026-04-09T00:00:00Z",
-           "changes":[
-              "Added identityPropagation configuration for impersonation, attribution, and system identity execution modes",
-              "Added tokenBroker mint endpoint and attribution field injection settings for runtime identity behavior"
-           ]
-        },
-        {
-           "version":"1.5.0",
-           "date":"2026-03-07T00:00:00Z",
-           "changes":[
-              "Optional rateLimit: outbound per-system rate limit (requestsPerWindow/windowSeconds or requestsPerSecond/burstSize); dataplane enforces and handles 429"
-           ]
-        },
-        {
-           "version":"1.4.0",
-           "date":"2026-03-07T00:00:00Z",
-           "changes":[
-              "Optional testEndpoint in authentication.variables for apikey: full URL or path (path resolved against baseUrl); credential test URL for E2E/credential step"
-           ]
-        },
-        {
-           "version":"1.3.0",
-           "date":"2026-02-18T00:00:00Z",
-           "changes":[
-              "Template-based authentication: method, variables (baseUrl when method not none), security (kv:// only), credentialKey, writeOnce",
-              "Credential created on deploy as authentication.credentialKey or <external-system.key>-cred"
-           ]
-        },
-        {
-           "version":"1.2.0",
-           "date":"2025-02-01T00:00:00Z",
-           "changes":[
-              "Added generateMcpContract (boolean, default true): config-only control for MCP contract generation on publish",
-              "Added generateOpenApiContract (boolean, default true): reserved for future use"
-           ],
-           "breaking":false
-        },
-        {
-           "version":"1.1.0",
-           "date":"2025-12-01T00:00:00Z",
-           "changes":[
-              "Added RBAC roles and permissions support",
-              "RBAC roles/permissions are registered with miso-controller during deployment",
-              "Roles support Azure AD group mapping via Groups property",
-              "Permissions reference roles and are used for access control"
-           ],
-           "breaking":false
-        },
-        {
-           "version":"1.0.0",
-           "date":"2024-01-01T00:00:00Z",
-           "changes":[
-              "Initial schema for External Systems",
-              "Added OpenAPI and MCP contract configuration",
-              "Added authentication and environment variables",
-              "Added portalInput for UI-driven onboarding",
-              "Compatible with field-mappings.schema and security-model.schema"
-           ],
-           "breaking":false
-        }
-     ]
-  },
-  "$defs":{
-     "authenticationVariablesByMethod":{
-        "oauth2":{"variables":[{"key":"baseUrl","required":true,"description":"API base URL"},{"key":"tokenUrl","required":true,"description":"OAuth token endpoint. Full URL (https://...) or path (e.g. /oauth/v2/token); path is resolved against baseUrl."},{"key":"authorizationUrl","required":false,"description":"OAuth authorization endpoint. Full URL or path; path is resolved against baseUrl. Required when grantType is authorization_code or omitted."},{"key":"grantType","required":false,"description":"OAuth 2.0 grant type. One of: client_credentials, authorization_code. Default: authorization_code."},{"key":"scope","required":false},{"key":"tenantId","required":false},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL or path (path resolved against baseUrl). If omitted, baseUrl + /health is used."}],"security":[{"key":"clientId","required":true},{"key":"clientSecret","required":true}]},
-        "aad":{"variables":[{"key":"baseUrl","required":true},{"key":"tokenUrl","required":true,"description":"Token endpoint. Full URL or path (path resolved against baseUrl)."},{"key":"authorizationUrl","required":false,"description":"Authorization endpoint. Full URL or path (path resolved against baseUrl). Required when grantType is authorization_code or omitted."},{"key":"grantType","required":false,"description":"OAuth 2.0 grant type. One of: client_credentials, authorization_code. Default: authorization_code."},{"key":"tenantId","required":false},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL or path (path resolved against baseUrl). If omitted, baseUrl + /health is used."}],"security":[{"key":"clientId","required":true},{"key":"clientSecret","required":true}]},
-        "apikey":{"variables":[{"key":"baseUrl","required":true},{"key":"headerName","required":false},{"key":"prefix","required":false},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL (https://...) or path (e.g. /crm/v3/objects/contacts?limit=1); path is resolved against baseUrl. If omitted, baseUrl + /health is used."}],"security":[{"key":"apiKey","required":true}]},
-        "bearerToken":{"variables":[{"key":"baseUrl","required":true},{"key":"headerName","required":false},{"key":"prefix","required":false},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL (https://...) or path; path is resolved against baseUrl. If omitted, baseUrl + /health is used."}],"security":[{"key":"token","required":true}]},
-        "basic":{"variables":[{"key":"baseUrl","required":true},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL or path (path resolved against baseUrl). If omitted, baseUrl + /health is used."}],"security":[{"key":"username","required":true},{"key":"password","required":true}]},
-        "queryParam":{"variables":[{"key":"baseUrl","required":true},{"key":"paramName","required":true},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL or path (path resolved against baseUrl). If omitted, baseUrl + /health is used."}],"security":[{"key":"paramValue","required":true}]},
-        "oidc":{"variables":[{"key":"openIdConfigUrl","required":true},{"key":"clientId","required":true},{"key":"expectedIssuer","required":false},{"key":"algorithms","required":false},{"key":"validateSignature","required":false},{"key":"clockSkewSeconds","required":false},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL or path. For OIDC, discovery URL is typically used if testEndpoint omitted."}],"security":[]},
-        "hmac":{"variables":[{"key":"baseUrl","required":false},{"key":"algorithm","required":false},{"key":"signatureHeader","required":false},{"key":"timestampHeader","required":false},{"key":"signaturePrefix","required":false},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL or path (path resolved against baseUrl when baseUrl present)."}],"security":[{"key":"signingSecret","required":true}]},
-        "none":{"variables":[],"security":[]}
-     }
-  },
-  "type":"object",
-  "required":[
-     "key",
-     "displayName",
-     "description",
-     "type",
-     "authentication"
-  ],
-  "properties":{
-     "key":{
-        "type":"string",
-        "description":"Unique external system identifier (cannot be changed after creation). Example: 'hubspot', 'salesforce', 'teams'.",
-        "pattern":"^[a-z0-9-]+$",
-        "minLength":3,
-        "maxLength":40
-     },
-     "displayName":{
-        "type":"string",
-        "description":"Human-readable name for the external system",
-        "minLength":1,
-        "maxLength":100
-     },
-     "description":{
-        "type":"string",
-        "description":"Description of this external system integration",
-        "minLength":1,
-        "maxLength":500
-     },
-     "type":{
-        "type":"string",
-        "enum":[
-           "openapi",
-           "mcp",
-           "custom"
-        ],
-        "description":"Integration type: openapi and mcp indicate how the system is wired at a high level; per-datasource vendor specifications and import provenance are authored on each ExternalDataSource (external-datasource.schema.json externalSpec), not duplicated as the full contract here."
-     },
-     "enabled":{
-        "type":"boolean",
-        "default":true
-     },
-     "credentialIdOrKey":{
-        "type":"string",
-        "description":"Credential identifier (ID or key) to attach to this system. Used by dataplane when creating/updating system from deploy config."
-     },
-     "internal":{
-        "type":"boolean",
-        "description":"When true, this integration is deployed on dataplane startup (internal integration). When false or absent, deployed via pipeline only.",
-        "default":false
-     },
-     "authentication":{
-        "type":"object",
-        "description":"Template-based authentication. Required: method, variables. When method is not 'none', variables must include baseUrl and security must contain only kv:// references. On deploy, a credential is created with key authentication.credentialKey or <external-system.key>-cred. Template is write-once.",
-        "required":[
-           "method",
-           "variables"
-        ],
-        "properties":{
-           "credentialKey":{
-              "type":"string",
-              "description":"Stable reference key for the active credential. Default: <external-system.key>-cred."
-           },
-           "displayName":{
-              "type":"string",
-              "description":"Display name for the credential created from this template."
-           },
-           "method":{
-              "type":"string",
-              "enum":[
-                 "oauth2",
-                 "apikey",
-                 "bearerToken",
-                 "basic",
-                 "aad",
-                 "none",
-                 "queryParam",
-                 "oidc",
-                 "hmac"
-              ],
-              "description":"Authentication method."
-           },
-           "variables":{
-              "type":"object",
-              "description":"Non-secret config. See $defs.authenticationVariablesByMethod for per-method keys. oauth2/aad: baseUrl, tokenUrl, authorizationUrl (optional; required when grantType is authorization_code or omitted), grantType (optional, default authorization_code); apikey: baseUrl, headerName (optional), prefix (optional), testEndpoint (optional); bearerToken: baseUrl, headerName (optional), prefix (optional), testEndpoint (optional); basic: baseUrl; queryParam: baseUrl, paramName; oidc: openIdConfigUrl, clientId; hmac: optional; none: empty. URL-valued variables (tokenUrl, authorizationUrl, testEndpoint) accept full URL or path; paths are resolved against baseUrl by the backend.",
-              "additionalProperties":{
-                 "type":"string"
-              }
-           },
-           "security":{
-              "type":"object",
-              "description":"Secret-bearing keys only. Values must be kv:// references. See $defs.authenticationVariablesByMethod. oauth2/aad: clientId, clientSecret; apikey: apiKey; bearerToken: token; basic: username, password; queryParam: paramValue; oidc: none; hmac: signingSecret.",
-              "additionalProperties":{
-                 "type":"string",
-                 "pattern":"^kv://.+$"
-              }
-           },
-           "writeOnce":{
-              "type":"boolean",
-              "description":"Template is immutable after first deploy; dataplane does not update the credential from this template again.",
-              "default":true
-           }
-        },
-        "examples":[
-           {"method":"oauth2","variables":{"baseUrl":"https://api.example.com","tokenUrl":"https://api.example.com/oauth/token","authorizationUrl":"https://api.example.com/oauth/authorize"},"security":{"clientId":"kv://example/clientId","clientSecret":"kv://example/clientSecret"}},
-           {"method":"oauth2","variables":{"baseUrl":"https://api.example.com","tokenUrl":"https://api.example.com/oauth/token","grantType":"client_credentials"},"security":{"clientId":"kv://example/clientId","clientSecret":"kv://example/clientSecret"}},
-           {"method":"apikey","variables":{"baseUrl":"https://api.example.com","headerName":"X-API-Key","testEndpoint":"https://api.example.com/health"},"security":{"apiKey":"kv://example/apiKey"}},
-           {"method":"bearerToken","variables":{"baseUrl":"https://api.example.com","headerName":"Authorization","prefix":"Bearer","testEndpoint":"/crm/v3/objects/contacts?limit=1"},"security":{"token":"kv://example/token"}},
-           {"method":"apikey","variables":{"baseUrl":"https://api.example.com","headerName":"Authorization","prefix":"Bearer","testEndpoint":"/crm/v3/objects/contacts?limit=1"},"security":{"apiKey":"kv://example/apiKey"}},
-           {"method":"basic","variables":{"baseUrl":"https://api.example.com"},"security":{"username":"kv://example/username","password":"kv://example/password"}},
-           {"method":"queryParam","variables":{"baseUrl":"https://api.example.com","paramName":"api_key"},"security":{"paramValue":"kv://example/apiKey"}},
-           {"method":"oidc","variables":{"openIdConfigUrl":"https://example.com/.well-known/openid-configuration","clientId":"app-id"}},
-           {"method":"hmac","variables":{"signatureHeader":"X-Signature"},"security":{"signingSecret":"kv://example/signingSecret"}},
-           {"method":"none","variables":{}}
-        ],
-        "additionalProperties":false
-     },
-     "openapi":{
-        "type":"object",
-        "description":"System-level connectivity and bootstrap hints for OpenAPI-backed systems (e.g. default specUrl for discovery, documentKey alignment with shared registry entries). Not the authoritative per-datasource vendor OpenAPI contract; that is declared on the datasource via externalSpec and validated against imported material.",
-        "properties":{
-           "documentKey":{
-              "type":"string",
-              "description":"Optional registry-oriented key associated with this system's default OpenAPI document (wizard/bootstrap)."
-           },
-           "specUrl":{
-              "type":"string",
-              "description":"Optional absolute URL to a representative OpenAPI specification for onboarding or tooling (not a substitute for datasource externalSpec).",
-              "pattern":"^(http|https)://.*$"
-           },
-           "autoDiscoverEntities":{
-              "type":"boolean",
-              "description":"Optional wizard or tooling hint to discover entities from the system default spec. Not part of the per-datasource vendor contract (see external-datasource externalSpec)."
-           }
-        },
-        "additionalProperties":false
-     },
-     "mcp":{
-        "type":"object",
-        "description":"System-level MCP connectivity hints (server URL, tool prefix). Not the datasource-level MCP security or operation contract; those live on ExternalDataSource configuration.",
-        "properties":{
-           "serverUrl":{
-              "type":"string",
-              "description":"MCP server URL",
-              "pattern":"^(http|https)://.*$"
-           },
-           "toolPrefix":{
-              "type":"string",
-              "description":"Prefix for MCP tool names",
-              "pattern":"^[a-zA-Z0-9_-]+$"
-           }
-        },
-        "additionalProperties":false
-     },
-     "dataSources":{
-        "type":"array",
-        "description":"List of data source keys belonging to this external system. Each must match external-datasource.schema.json.",
-        "items":{
-           "type":"string",
-           "pattern":"^[a-z0-9-]+$"
-        },
-        "uniqueItems":true
-     },
-     "configuration":{
-        "type":"array",
-        "description":"External system configuration variables (same pattern as application-schema).",
-        "items":{
-           "type":"object",
-           "required":[
-              "name",
-              "value",
-              "location",
-              "required"
-           ],
-           "properties":{
-              "name":{
-                 "type":"string",
-                 "pattern":"^[A-Z_][A-Z0-9_]*$"
-              },
-              "value":{
-                 "type":"string",
-                 "description":"Literal value or parameter reference ({{parameter}})"
-              },
-              "location":{
-                 "type":"string",
-                 "enum":[
-                    "variable",
-                    "keyvault"
-                 ]
-              },
-              "required":{
-                 "type":"boolean"
-              },
-              "portalInput":{
-                 "type":"object",
-                 "required":[
-                    "field",
-                    "label"
-                 ],
-                 "properties":{
-                    "field":{
-                       "type":"string",
-                       "enum":[
-                          "password",
-                          "text",
-                          "textarea",
-                          "select",
-                          "json"
-                       ]
-                    },
-                    "label":{
-                       "type":"string"
-                    },
-                    "placeholder":{
-                       "type":"string"
-                    },
-                    "options":{
-                       "type":"array",
-                       "items":{
-                          "type":"string"
-                       }
-                    },
-                    "masked":{
-                       "type":"boolean"
-                    },
-                    "validation":{
-                       "type":"object",
-                       "properties":{
-                          "minLength":{
-                             "type":"integer"
-                          },
-                          "maxLength":{
-                             "type":"integer"
-                          },
-                          "pattern":{
-                             "type":"string"
-                          },
-                          "required":{
-                             "type":"boolean"
-                          }
-                       },
-                       "additionalProperties":false
-                    }
-                 },
-                 "additionalProperties":false
-              }
-           },
-           "additionalProperties":false
-        }
-     },
-     "tags":{
-        "type":"array",
-        "description":"Optional tags for search / filtering",
-        "items":{
-           "type":"string"
-        }
-     },
-     "roles":{
-        "type":"array",
-        "description":"External system roles for Azure AD group mapping",
-        "items":{
-           "type":"object",
-           "required":[
-              "name",
-              "value",
-              "description"
-           ],
-           "properties":{
-              "name":{
-                 "type":"string",
-                 "description":"Human-readable role name",
-                 "minLength":1,
-                 "maxLength":100
-              },
-              "value":{
-                 "type":"string",
-                 "description":"Role identifier (used in JWT and ACL)",
-                 "pattern":"^[a-z0-9-]+$"
-              },
-              "description":{
-                 "type":"string",
-                 "description":"Role description",
-                 "minLength":1,
-                 "maxLength":500
-              },
-              "groups":{
-                 "type":"array",
-                 "description":"Azure AD groups mapped to this role",
-                 "items":{
-                    "type":"string",
-                    "minLength":1,
-                    "maxLength":100
-                 }
-              }
-           },
-           "additionalProperties":false
-        }
-     },
-     "permissions":{
-        "type":"array",
-        "description":"External system permissions with role mappings for access control",
-        "items":{
-           "type":"object",
-           "required":[
-              "name",
-              "roles",
-              "description"
-           ],
-           "properties":{
-              "name":{
-                 "type":"string",
-                 "description":"Permission identifier (e.g., 'documentstore:read', 'flowise:dev:access')",
-                 "pattern":"^[a-z0-9-:]+$",
-                 "minLength":1,
-                 "maxLength":100
-              },
-              "roles":{
-                 "type":"array",
-                 "description":"Roles that have this permission",
-                 "items":{
-                    "type":"string",
-                    "pattern":"^[a-z0-9-]+$",
-                    "minLength":1,
-                    "maxLength":50
-                 },
-                 "minItems":1
-              },
-              "description":{
-                 "type":"string",
-                 "description":"Permission description",
-                 "minLength":1,
-                 "maxLength":500
-              }
-           },
-           "additionalProperties":false
-        }
-     },
-     "endpoints":{
-        "type":"array",
-        "description":"API endpoint configurations for this external system. Used for dynamic endpoint registration at application startup.",
-        "items":{
-           "type":"object",
-           "required":[
-              "type",
-              "path"
-           ],
-           "properties":{
-              "type":{
-                 "type":"string",
-                 "description":"Endpoint type identifier (e.g., 'commands', 'events', 'notifications')",
-                 "pattern":"^[a-z0-9-]+$"
-              },
-              "path":{
-                 "type":"string",
-                 "description":"URL path for this endpoint (e.g., '/commands', '/events')",
-                 "pattern":"^/[a-z0-9/-]*$"
-              },
-              "description":{
-                 "type":"string",
-                 "description":"Human-readable description of the endpoint"
-              },
-              "active":{
-                 "type":"boolean",
-                 "description":"Whether this endpoint should be registered (defaults to true)",
-                 "default":true
-              },
-              "router":{
-                 "type":"string",
-                 "description":"Custom router module path override (defaults to auto-discovery based on naming convention)"
-              }
-           },
-           "additionalProperties":false
-        }
-     },
-     "endpointsActive":{
-        "type":"boolean",
-        "description":"Master switch for all endpoints in this system. If false, no endpoints are registered regardless of individual endpoint active flags.",
-        "default":true
-     },
-     "generateMcpContract":{
-        "type":"boolean",
-        "description":"Whether to generate MCP contract on publish. Config only (no query parameter); default true when absent.",
-        "default":true
-     },
-     "generateOpenApiContract":{
-        "type":"boolean",
-        "description":"Reserved: whether to generate or expose OpenAPI contract on publish. Not yet implemented.",
-        "default":true
-     },
-     "triggerPathsHash":{
-        "type":"string",
-        "description":"SHA256 hash of triggerPaths payload (64-char hex). Used to detect structural changes. Optional; Dataplane computes when absent.",
-        "pattern":"^[a-f0-9]{64}$"
-     },
-     "identityPropagation":{
-        "type":"object",
-        "description":"Declares supported identity propagation modes and defaults for outbound operations.",
-        "required":[
-           "modes",
-           "default"
-        ],
-        "properties":{
-           "modes":{
-              "type":"array",
-              "items":{
-                 "type":"string",
-                 "enum":[
-                    "impersonation",
-                    "attribution",
-                    "system"
-                 ]
-              },
-              "uniqueItems":true,
-              "minItems":1
-           },
-           "default":{
-              "type":"string",
-              "enum":[
-                 "impersonation",
-                 "attribution",
-                 "system"
-              ]
-           },
-           "impersonation":{
-              "type":"object",
-              "properties":{
-                 "tokenBroker":{
-                    "type":"object",
-                    "properties":{
-                       "mintEndpoint":{
-                          "type":"string",
-                          "default":"/api/v1/auth/token/mint",
-                          "description":"Controller endpoint for delegated token minting."
-                       }
-                    },
-                    "additionalProperties":false
-                 },
-                 "scopes":{
-                    "type":"array",
-                    "items":{
-                       "type":"string"
-                    }
-                 },
-                 "requiredUserConsent":{
-                    "type":"boolean",
-                    "default":false
-                 }
-              },
-              "additionalProperties":false
-           },
-           "attribution":{
-              "type":"object",
-              "properties":{
-                 "actorFieldMappings":{
-                    "type":"object",
-                    "description":"Map target fields to actor templates (supports {{actor.*}} and {{request.*}}).",
-                    "additionalProperties":{
-                       "type":[
-                          "string",
-                          "number",
-                          "boolean"
-                       ]
-                    }
-                 },
-                 "commentTemplate":{
-                    "type":"string",
-                    "description":"Optional comment template for attribution logs (supports {{actor.*}})."
-                 },
-                 "injectionLocations":{
-                    "type":"array",
-                    "items":{
-                       "type":"string",
-                       "enum":[
-                          "body",
-                          "headers",
-                          "query",
-                          "comment"
-                       ]
-                    },
-                    "default":[
-                       "body"
-                    ],
-                    "uniqueItems":true
-                 }
-              },
-              "additionalProperties":false
-           },
-           "system":{
-              "type":"object",
-              "properties":{
-                 "allowWrites":{
-                    "type":"boolean",
-                    "default":true
-                 }
-              },
-              "additionalProperties":false
-           }
-        },
-        "additionalProperties":false
-     },
-     "rateLimit":{
-        "type":"object",
-        "description":"Outbound rate limit for requests from the dataplane to this external system. When set, the dataplane enforces the limit per base URL and handles HTTP 429 (wait and retry). When absent, global env defaults apply (CIP_EXECUTION_RATE_LIMIT_REQUESTS_PER_SECOND, CIP_EXECUTION_RATE_LIMIT_BURST_SIZE). Supports window-based (e.g. HubSpot 100/10s) or token-bucket style (requestsPerSecond + burstSize).",
-        "properties":{
-           "requestsPerWindow":{
-              "type":"integer",
-              "minimum":1,
-              "description":"Maximum requests allowed in the time window (window-based limit). Example: 100 for HubSpot's 100 requests per 10 seconds."
-           },
-           "windowSeconds":{
-              "type":"integer",
-              "minimum":1,
-              "description":"Time window in seconds. Used with requestsPerWindow. Example: 10 for HubSpot (100 requests per 10 seconds)."
-           },
-           "requestsPerSecond":{
-              "type":"number",
-              "minimum":0.1,
-              "description":"Sustained request rate (token-bucket style). When used with burstSize, allows short bursts up to burstSize while refilling at this rate."
-           },
-           "burstSize":{
-              "type":"integer",
-              "minimum":1,
-              "description":"Maximum burst size in tokens (token-bucket style). Used with requestsPerSecond."
-           }
-        },
-        "additionalProperties":false,
-        "oneOf":[
-           {
-              "required":["requestsPerWindow","windowSeconds"]
-           },
-           {
-              "required":["requestsPerSecond","burstSize"]
-           }
-        ],
-        "examples":[
-           {"requestsPerWindow":100,"windowSeconds":10},
-           {"requestsPerSecond":10,"burstSize":100}
-        ]
-     },
-     "performance":{
-        "type":"object",
-        "description":"Performance defaults for runtime paths in this external system.",
-        "properties":{
-           "cacheDefaults":{
-              "type":"object",
-              "description":"Default cache policy inherited by datasources unless overridden under sync.cache.",
-              "properties":{
-                 "enabled":{
-                    "type":"boolean",
-                    "default":true
-                 },
-                 "ttlSeconds":{
-                    "type":"integer",
-                    "minimum":1,
-                    "maximum":604800,
-                    "default":1800
-                 }
-              },
-              "additionalProperties":false
-           }
-        },
-        "additionalProperties":false
-     },
-     "certification":{
-        "type":"object",
-        "description":"Public certification settings for external system version verification.",
-        "required":[
-           "enabled",
-           "publicKey",
-           "algorithm",
-           "issuer",
-           "version"
-        ],
-        "properties":{
-           "enabled":{
-              "type":"boolean",
-              "description":"Enable public certification metadata for this external system."
-           },
-           "publicKey":{
-              "type":"string",
-              "minLength":1,
-              "description":"Public verification material (SPKI PEM for RS256). Private keys must never appear in config."
-           },
-           "publicKeyFingerprint":{
-              "type":"string",
-              "pattern":"^sha256:[0-9a-f]{64}$",
-              "description":"SHA-256 fingerprint of the SubjectPublicKeyInfo DER (same convention as integration certificate publicKeyFingerprint); must match embedded publicKey."
-           },
-           "contractHash":{
-              "type":"string",
-              "pattern":"^sha256:[0-9a-f]{64}$",
-              "description":"Optional copy of the active integration certificate contractHash (certification contract material digest) for drift checks; should match the dataplane active trusted certificate when present."
-           },
-           "algorithm":{
-              "type":"string",
-              "enum":[
-                 "RS256"
-              ],
-              "description":"Signing algorithm for integration certificate verification (RS256 only)."
-           },
-           "issuer":{
-              "type":"string",
-              "minLength":1,
-              "description":"Certificate issuer identifier."
-           },
-           "version":{
-              "type":"string",
-              "minLength":1,
-              "description":"Certification version identifier; must align with external system versioning."
-           },
-           "status":{
-              "type":"string",
-              "enum":[
-                 "passed",
-                 "not_passed",
-                 "pending"
-              ],
-              "description":"Outcome of certification evaluation for this block (aligns with DatasourceTestRun certificate.status)."
-           },
-           "level":{
-              "type":"string",
-              "enum":[
-                 "BRONZE",
-                 "SILVER",
-                 "GOLD",
-                 "PLATINUM"
-              ],
-              "description":"Achieved certification tier (aligns with integration certificate certificationLevel)."
-           }
-        },
-        "additionalProperties":false
-     }
-  },
-  "additionalProperties":false
+   "$schema": "http://json-schema.org/draft-07/schema#",
+   "$id": "aifabrix://schema/external-system.schema.json",
+   "title": "AI Fabrix External System Configuration Schema",
+   "description": "Schema for configuring an external system connected to the AI Fabrix Dataplane. This defines authentication, system-level OpenAPI/MCP connectivity hints (not the datasource-grade vendor contract; see external-datasource.schema.json root externalSpec), field mappings defaults, metadata handling and portal inputs.",
+   "metadata": {
+      "key": "external-system-schema",
+      "name": "External System Configuration Schema",
+      "description": "JSON schema for validating ExternalSystem configuration files",
+      "version": "1.7.0",
+      "type": "schema",
+      "category": "integration",
+      "author": "AI Fabrix Team",
+      "createdAt": "2024-01-01T00:00:00Z",
+      "updatedAt": "2026-05-20T00:00:00Z",
+      "compatibility": {
+         "minVersion": "1.4.0",
+         "maxVersion": "2.0.0",
+         "deprecated": false
+      },
+      "tags": [
+         "schema",
+         "external-system",
+         "dataplane",
+         "integration",
+         "validation"
+      ],
+      "dependencies": [],
+      "changelog": [
+         {
+            "version": "1.7.0",
+            "date": "2026-05-20T00:00:00Z",
+            "changes": [
+               "Breaking: nested authentication with authType discriminator (credential | apiProvider | none)",
+               "Flat authentication.method at top level removed; credential template lives under authentication.credential",
+               "Added authentication.apiProvider.apiProviderKey for Miso delegated API Provider reference"
+            ],
+            "breaking": true
+         },
+         {
+            "version": "1.6.3",
+            "date": "2026-05-10T00:00:00Z",
+            "changes": [
+               "Documented split: system openapi/mcp objects are connectivity and bootstrap hints (specUrl, serverUrl, documentKey); datasource-level vendor/API provenance belongs in external-datasource externalSpec.",
+               "Declared optional openapi.autoDiscoverEntities (wizard/tooling); tightened openapi and mcp to additionalProperties: false."
+            ],
+            "breaking": false
+         },
+         {
+            "version": "1.6.2",
+            "date": "2026-04-23T00:00:00Z",
+            "changes": [
+               "certification.algorithm: RS256 only (removed HS256 from enum)"
+            ]
+         },
+         {
+            "version": "1.6.1",
+            "date": "2026-04-22T00:00:00Z",
+            "changes": [
+               "Optional certification.publicKeyFingerprint (sha256: hex of SPKI DER) for RS256 public key verification"
+            ]
+         },
+         {
+            "version": "1.6.0",
+            "date": "2026-04-09T00:00:00Z",
+            "changes": [
+               "Added identityPropagation configuration for impersonation, attribution, and system identity execution modes",
+               "Added tokenBroker mint endpoint and attribution field injection settings for runtime identity behavior"
+            ]
+         },
+         {
+            "version": "1.5.0",
+            "date": "2026-03-07T00:00:00Z",
+            "changes": [
+               "Optional rateLimit: outbound per-system rate limit (requestsPerWindow/windowSeconds or requestsPerSecond/burstSize); dataplane enforces and handles 429"
+            ]
+         },
+         {
+            "version": "1.4.0",
+            "date": "2026-03-07T00:00:00Z",
+            "changes": [
+               "Optional testEndpoint in authentication.variables for apikey: full URL or path (path resolved against baseUrl); credential test URL for E2E/credential step"
+            ]
+         },
+         {
+            "version": "1.3.0",
+            "date": "2026-02-18T00:00:00Z",
+            "changes": [
+               "Template-based authentication: method, variables (baseUrl when method not none), security (kv:// only), credentialKey, writeOnce",
+               "Credential created on deploy as authentication.credentialKey or <external-system.key>-cred"
+            ]
+         },
+         {
+            "version": "1.2.0",
+            "date": "2025-02-01T00:00:00Z",
+            "changes": [
+               "Added generateMcpContract (boolean, default true): config-only control for MCP contract generation on publish",
+               "Added generateOpenApiContract (boolean, default true): reserved for future use"
+            ],
+            "breaking": false
+         },
+         {
+            "version": "1.1.0",
+            "date": "2025-12-01T00:00:00Z",
+            "changes": [
+               "Added RBAC roles and permissions support",
+               "RBAC roles/permissions are registered with miso-controller during deployment",
+               "Roles support Azure AD group mapping via Groups property",
+               "Permissions reference roles and are used for access control"
+            ],
+            "breaking": false
+         },
+         {
+            "version": "1.0.0",
+            "date": "2024-01-01T00:00:00Z",
+            "changes": [
+               "Initial schema for External Systems",
+               "Added OpenAPI and MCP contract configuration",
+               "Added authentication and environment variables",
+               "Added portalInput for UI-driven onboarding",
+               "Compatible with field-mappings.schema and security-model.schema"
+            ],
+            "breaking": false
+         }
+      ]
+   },
+   "$defs": {
+      "authenticationVariablesByMethod": {
+         "oauth2": {
+            "variables": [
+               {
+                  "key": "baseUrl",
+                  "required": true,
+                  "description": "API base URL"
+               },
+               {
+                  "key": "tokenUrl",
+                  "required": true,
+                  "description": "OAuth token endpoint. Full URL (https://...) or path (e.g. /oauth/v2/token); path is resolved against baseUrl."
+               },
+               {
+                  "key": "authorizationUrl",
+                  "required": false,
+                  "description": "OAuth authorization endpoint. Full URL or path; path is resolved against baseUrl. Required when grantType is authorization_code or omitted."
+               },
+               {
+                  "key": "grantType",
+                  "required": false,
+                  "description": "OAuth 2.0 grant type. One of: client_credentials, authorization_code. Default: authorization_code."
+               },
+               {
+                  "key": "scope",
+                  "required": false
+               },
+               {
+                  "key": "tenantId",
+                  "required": false
+               },
+               {
+                  "key": "testEndpoint",
+                  "required": false,
+                  "description": "Optional URL used when testing the credential (GET). Full URL or path (path resolved against baseUrl). If omitted, baseUrl + /health is used."
+               }
+            ],
+            "security": [
+               {
+                  "key": "clientId",
+                  "required": true
+               },
+               {
+                  "key": "clientSecret",
+                  "required": true
+               }
+            ]
+         },
+         "aad": {
+            "variables": [
+               {
+                  "key": "baseUrl",
+                  "required": true
+               },
+               {
+                  "key": "tokenUrl",
+                  "required": true,
+                  "description": "Token endpoint. Full URL or path (path resolved against baseUrl)."
+               },
+               {
+                  "key": "authorizationUrl",
+                  "required": false,
+                  "description": "Authorization endpoint. Full URL or path (path resolved against baseUrl). Required when grantType is authorization_code or omitted."
+               },
+               {
+                  "key": "grantType",
+                  "required": false,
+                  "description": "OAuth 2.0 grant type. One of: client_credentials, authorization_code. Default: authorization_code."
+               },
+               {
+                  "key": "tenantId",
+                  "required": false
+               },
+               {
+                  "key": "testEndpoint",
+                  "required": false,
+                  "description": "Optional URL used when testing the credential (GET). Full URL or path (path resolved against baseUrl). If omitted, baseUrl + /health is used."
+               }
+            ],
+            "security": [
+               {
+                  "key": "clientId",
+                  "required": true
+               },
+               {
+                  "key": "clientSecret",
+                  "required": true
+               }
+            ]
+         },
+         "apikey": {
+            "variables": [
+               {
+                  "key": "baseUrl",
+                  "required": true
+               },
+               {
+                  "key": "headerName",
+                  "required": false
+               },
+               {
+                  "key": "prefix",
+                  "required": false
+               },
+               {
+                  "key": "testEndpoint",
+                  "required": false,
+                  "description": "Optional URL used when testing the credential (GET). Full URL (https://...) or path (e.g. /crm/v3/objects/contacts?limit=1); path is resolved against baseUrl. If omitted, baseUrl + /health is used."
+               }
+            ],
+            "security": [
+               {
+                  "key": "apiKey",
+                  "required": true
+               }
+            ]
+         },
+         "bearerToken": {
+            "variables": [
+               {
+                  "key": "baseUrl",
+                  "required": true
+               },
+               {
+                  "key": "headerName",
+                  "required": false
+               },
+               {
+                  "key": "prefix",
+                  "required": false
+               },
+               {
+                  "key": "testEndpoint",
+                  "required": false,
+                  "description": "Optional URL used when testing the credential (GET). Full URL or path; path is resolved against baseUrl. If omitted, baseUrl + /health is used."
+               }
+            ],
+            "security": [
+               {
+                  "key": "token",
+                  "required": true
+               }
+            ]
+         },
+         "basic": {
+            "variables": [
+               {
+                  "key": "baseUrl",
+                  "required": true
+               },
+               {
+                  "key": "testEndpoint",
+                  "required": false,
+                  "description": "Optional URL used when testing the credential (GET). Full URL or path (path resolved against baseUrl). If omitted, baseUrl + /health is used."
+               }
+            ],
+            "security": [
+               {
+                  "key": "username",
+                  "required": true
+               },
+               {
+                  "key": "password",
+                  "required": true
+               }
+            ]
+         },
+         "queryParam": {
+            "variables": [
+               {
+                  "key": "baseUrl",
+                  "required": true
+               },
+               {
+                  "key": "paramName",
+                  "required": true
+               },
+               {
+                  "key": "testEndpoint",
+                  "required": false,
+                  "description": "Optional URL used when testing the credential (GET). Full URL or path (path resolved against baseUrl). If omitted, baseUrl + /health is used."
+               }
+            ],
+            "security": [
+               {
+                  "key": "paramValue",
+                  "required": true
+               }
+            ]
+         },
+         "oidc": {
+            "variables": [
+               {
+                  "key": "openIdConfigUrl",
+                  "required": true
+               },
+               {
+                  "key": "clientId",
+                  "required": true
+               },
+               {
+                  "key": "expectedIssuer",
+                  "required": false
+               },
+               {
+                  "key": "algorithms",
+                  "required": false
+               },
+               {
+                  "key": "validateSignature",
+                  "required": false
+               },
+               {
+                  "key": "clockSkewSeconds",
+                  "required": false
+               },
+               {
+                  "key": "testEndpoint",
+                  "required": false,
+                  "description": "Optional URL used when testing the credential (GET). Full URL or path. For OIDC, discovery URL is typically used if testEndpoint omitted."
+               }
+            ],
+            "security": []
+         },
+         "hmac": {
+            "variables": [
+               {
+                  "key": "baseUrl",
+                  "required": false
+               },
+               {
+                  "key": "algorithm",
+                  "required": false
+               },
+               {
+                  "key": "signatureHeader",
+                  "required": false
+               },
+               {
+                  "key": "timestampHeader",
+                  "required": false
+               },
+               {
+                  "key": "signaturePrefix",
+                  "required": false
+               },
+               {
+                  "key": "testEndpoint",
+                  "required": false,
+                  "description": "Optional URL used when testing the credential (GET). Full URL or path (path resolved against baseUrl when baseUrl present)."
+               }
+            ],
+            "security": [
+               {
+                  "key": "signingSecret",
+                  "required": true
+               }
+            ]
+         },
+         "none": {
+            "variables": [],
+            "security": []
+         }
+      },
+      "credentialTemplate": {
+         "type": "object",
+         "description": "Local credential template (method, variables, security with kv:// only). Materialized to credentials row on deploy.",
+         "required": [
+            "method",
+            "variables"
+         ],
+         "properties": {
+            "credentialKey": {
+               "type": "string",
+               "description": "Stable reference key for the active credential. Default: <external-system.key>-cred."
+            },
+            "displayName": {
+               "type": "string",
+               "description": "Display name for the credential created from this template."
+            },
+            "method": {
+               "type": "string",
+               "enum": [
+                  "oauth2",
+                  "apikey",
+                  "bearerToken",
+                  "basic",
+                  "aad",
+                  "none",
+                  "queryParam",
+                  "oidc",
+                  "hmac"
+               ],
+               "description": "Authentication method."
+            },
+            "variables": {
+               "type": "object",
+               "description": "Non-secret config. See $defs.authenticationVariablesByMethod for per-method keys.",
+               "additionalProperties": {
+                  "type": "string"
+               }
+            },
+            "security": {
+               "type": "object",
+               "description": "Secret-bearing keys only. Values must be kv:// references.",
+               "additionalProperties": {
+                  "type": "string",
+                  "pattern": "^kv://.+$"
+               }
+            },
+            "writeOnce": {
+               "type": "boolean",
+               "description": "Template is immutable after first deploy.",
+               "default": true
+            }
+         },
+         "additionalProperties": false
+      },
+      "apiProviderReference": {
+         "type": "object",
+         "description": "Reference to a Miso API Provider for delegated authentication (no dataplane secrets).",
+         "required": [
+            "apiProviderKey"
+         ],
+         "properties": {
+            "apiProviderKey": {
+               "type": "string",
+               "minLength": 1,
+               "description": "Stable key of the Miso API Provider configuration."
+            }
+         },
+         "additionalProperties": false
+      }
+   },
+   "type": "object",
+   "required": [
+      "key",
+      "displayName",
+      "description",
+      "type",
+      "authentication"
+   ],
+   "properties": {
+      "key": {
+         "type": "string",
+         "description": "Unique external system identifier (cannot be changed after creation). Example: 'hubspot', 'salesforce', 'teams'.",
+         "pattern": "^[a-z0-9-]+$",
+         "minLength": 3,
+         "maxLength": 40
+      },
+      "displayName": {
+         "type": "string",
+         "description": "Human-readable name for the external system",
+         "minLength": 1,
+         "maxLength": 100
+      },
+      "description": {
+         "type": "string",
+         "description": "Description of this external system integration",
+         "minLength": 1,
+         "maxLength": 500
+      },
+      "type": {
+         "type": "string",
+         "enum": [
+            "openapi",
+            "mcp",
+            "custom"
+         ],
+         "description": "Integration type: openapi and mcp indicate how the system is wired at a high level; per-datasource vendor specifications and import provenance are authored on each ExternalDataSource (external-datasource.schema.json externalSpec), not duplicated as the full contract here."
+      },
+      "enabled": {
+         "type": "boolean",
+         "default": true
+      },
+      "credentialIdOrKey": {
+         "type": "string",
+         "description": "Credential identifier (ID or key) to attach to this system. Used by dataplane when creating/updating system from deploy config."
+      },
+      "internal": {
+         "type": "boolean",
+         "description": "When true, this integration is deployed on dataplane startup (internal integration). When false or absent, deployed via pipeline only.",
+         "default": false
+      },
+      "authentication": {
+         "description": "Nested authentication: authType credential (local template), apiProvider (Miso delegated), or none.",
+         "oneOf": [
+            {
+               "type": "object",
+               "required": [
+                  "authType",
+                  "credential"
+               ],
+               "properties": {
+                  "authType": {
+                     "const": "credential"
+                  },
+                  "credential": {
+                     "$ref": "#/$defs/credentialTemplate"
+                  }
+               },
+               "additionalProperties": false
+            },
+            {
+               "type": "object",
+               "required": [
+                  "authType",
+                  "apiProvider"
+               ],
+               "properties": {
+                  "authType": {
+                     "const": "apiProvider"
+                  },
+                  "apiProvider": {
+                     "$ref": "#/$defs/apiProviderReference"
+                  }
+               },
+               "additionalProperties": false
+            },
+            {
+               "type": "object",
+               "required": [
+                  "authType"
+               ],
+               "properties": {
+                  "authType": {
+                     "const": "none"
+                  }
+               },
+               "additionalProperties": false
+            }
+         ]
+      },
+      "openapi": {
+         "type": "object",
+         "description": "System-level connectivity and bootstrap hints for OpenAPI-backed systems (e.g. default specUrl for discovery, documentKey alignment with shared registry entries). Not the authoritative per-datasource vendor OpenAPI contract; that is declared on the datasource via externalSpec and validated against imported material.",
+         "properties": {
+            "documentKey": {
+               "type": "string",
+               "description": "Optional registry-oriented key associated with this system's default OpenAPI document (wizard/bootstrap)."
+            },
+            "specUrl": {
+               "type": "string",
+               "description": "Optional absolute URL to a representative OpenAPI specification for onboarding or tooling (not a substitute for datasource externalSpec).",
+               "pattern": "^(http|https)://.*$"
+            },
+            "autoDiscoverEntities": {
+               "type": "boolean",
+               "description": "Optional wizard or tooling hint to discover entities from the system default spec. Not part of the per-datasource vendor contract (see external-datasource externalSpec)."
+            }
+         },
+         "additionalProperties": false
+      },
+      "mcp": {
+         "type": "object",
+         "description": "System-level MCP connectivity hints (server URL, tool prefix). Not the datasource-level MCP security or operation contract; those live on ExternalDataSource configuration.",
+         "properties": {
+            "serverUrl": {
+               "type": "string",
+               "description": "MCP server URL",
+               "pattern": "^(http|https)://.*$"
+            },
+            "toolPrefix": {
+               "type": "string",
+               "description": "Prefix for MCP tool names",
+               "pattern": "^[a-zA-Z0-9_-]+$"
+            }
+         },
+         "additionalProperties": false
+      },
+      "dataSources": {
+         "type": "array",
+         "description": "List of data source keys belonging to this external system. Each must match external-datasource.schema.json.",
+         "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+         },
+         "uniqueItems": true
+      },
+      "configuration": {
+         "type": "array",
+         "description": "External system configuration variables (same pattern as application-schema).",
+         "items": {
+            "type": "object",
+            "required": [
+               "name",
+               "value",
+               "location",
+               "required"
+            ],
+            "properties": {
+               "name": {
+                  "type": "string",
+                  "pattern": "^[A-Z_][A-Z0-9_]*$"
+               },
+               "value": {
+                  "type": "string",
+                  "description": "Literal value or parameter reference ({{parameter}})"
+               },
+               "location": {
+                  "type": "string",
+                  "enum": [
+                     "variable",
+                     "keyvault"
+                  ]
+               },
+               "required": {
+                  "type": "boolean"
+               },
+               "portalInput": {
+                  "type": "object",
+                  "required": [
+                     "field",
+                     "label"
+                  ],
+                  "properties": {
+                     "field": {
+                        "type": "string",
+                        "enum": [
+                           "password",
+                           "text",
+                           "textarea",
+                           "select",
+                           "json"
+                        ]
+                     },
+                     "label": {
+                        "type": "string"
+                     },
+                     "placeholder": {
+                        "type": "string"
+                     },
+                     "options": {
+                        "type": "array",
+                        "items": {
+                           "type": "string"
+                        }
+                     },
+                     "masked": {
+                        "type": "boolean"
+                     },
+                     "validation": {
+                        "type": "object",
+                        "properties": {
+                           "minLength": {
+                              "type": "integer"
+                           },
+                           "maxLength": {
+                              "type": "integer"
+                           },
+                           "pattern": {
+                              "type": "string"
+                           },
+                           "required": {
+                              "type": "boolean"
+                           }
+                        },
+                        "additionalProperties": false
+                     }
+                  },
+                  "additionalProperties": false
+               }
+            },
+            "additionalProperties": false
+         }
+      },
+      "tags": {
+         "type": "array",
+         "description": "Optional tags for search / filtering",
+         "items": {
+            "type": "string"
+         }
+      },
+      "roles": {
+         "type": "array",
+         "description": "External system roles for Azure AD group mapping",
+         "items": {
+            "type": "object",
+            "required": [
+               "name",
+               "value",
+               "description"
+            ],
+            "properties": {
+               "name": {
+                  "type": "string",
+                  "description": "Human-readable role name",
+                  "minLength": 1,
+                  "maxLength": 100
+               },
+               "value": {
+                  "type": "string",
+                  "description": "Role identifier (used in JWT and ACL)",
+                  "pattern": "^[a-z0-9-]+$"
+               },
+               "description": {
+                  "type": "string",
+                  "description": "Role description",
+                  "minLength": 1,
+                  "maxLength": 500
+               },
+               "groups": {
+                  "type": "array",
+                  "description": "Azure AD groups mapped to this role",
+                  "items": {
+                     "type": "string",
+                     "minLength": 1,
+                     "maxLength": 100
+                  }
+               }
+            },
+            "additionalProperties": false
+         }
+      },
+      "permissions": {
+         "type": "array",
+         "description": "External system permissions with role mappings for access control",
+         "items": {
+            "type": "object",
+            "required": [
+               "name",
+               "roles",
+               "description"
+            ],
+            "properties": {
+               "name": {
+                  "type": "string",
+                  "description": "Permission identifier (e.g., 'documentstore:read', 'flowise:dev:access')",
+                  "pattern": "^[a-z0-9-:]+$",
+                  "minLength": 1,
+                  "maxLength": 100
+               },
+               "roles": {
+                  "type": "array",
+                  "description": "Roles that have this permission",
+                  "items": {
+                     "type": "string",
+                     "pattern": "^[a-z0-9-]+$",
+                     "minLength": 1,
+                     "maxLength": 50
+                  },
+                  "minItems": 1
+               },
+               "description": {
+                  "type": "string",
+                  "description": "Permission description",
+                  "minLength": 1,
+                  "maxLength": 500
+               }
+            },
+            "additionalProperties": false
+         }
+      },
+      "endpoints": {
+         "type": "array",
+         "description": "API endpoint configurations for this external system. Used for dynamic endpoint registration at application startup.",
+         "items": {
+            "type": "object",
+            "required": [
+               "type",
+               "path"
+            ],
+            "properties": {
+               "type": {
+                  "type": "string",
+                  "description": "Endpoint type identifier (e.g., 'commands', 'events', 'notifications')",
+                  "pattern": "^[a-z0-9-]+$"
+               },
+               "path": {
+                  "type": "string",
+                  "description": "URL path for this endpoint (e.g., '/commands', '/events')",
+                  "pattern": "^/[a-z0-9/-]*$"
+               },
+               "description": {
+                  "type": "string",
+                  "description": "Human-readable description of the endpoint"
+               },
+               "active": {
+                  "type": "boolean",
+                  "description": "Whether this endpoint should be registered (defaults to true)",
+                  "default": true
+               },
+               "router": {
+                  "type": "string",
+                  "description": "Custom router module path override (defaults to auto-discovery based on naming convention)"
+               }
+            },
+            "additionalProperties": false
+         }
+      },
+      "endpointsActive": {
+         "type": "boolean",
+         "description": "Master switch for all endpoints in this system. If false, no endpoints are registered regardless of individual endpoint active flags.",
+         "default": true
+      },
+      "generateMcpContract": {
+         "type": "boolean",
+         "description": "Whether to generate MCP contract on publish. Config only (no query parameter); default true when absent.",
+         "default": true
+      },
+      "generateOpenApiContract": {
+         "type": "boolean",
+         "description": "Reserved: whether to generate or expose OpenAPI contract on publish. Not yet implemented.",
+         "default": true
+      },
+      "triggerPathsHash": {
+         "type": "string",
+         "description": "SHA256 hash of triggerPaths payload (64-char hex). Used to detect structural changes. Optional; Dataplane computes when absent.",
+         "pattern": "^[a-f0-9]{64}$"
+      },
+      "identityPropagation": {
+         "type": "object",
+         "description": "Declares supported identity propagation modes and defaults for outbound operations.",
+         "required": [
+            "modes",
+            "default"
+         ],
+         "properties": {
+            "modes": {
+               "type": "array",
+               "items": {
+                  "type": "string",
+                  "enum": [
+                     "impersonation",
+                     "attribution",
+                     "system"
+                  ]
+               },
+               "uniqueItems": true,
+               "minItems": 1
+            },
+            "default": {
+               "type": "string",
+               "enum": [
+                  "impersonation",
+                  "attribution",
+                  "system"
+               ]
+            },
+            "impersonation": {
+               "type": "object",
+               "properties": {
+                  "tokenBroker": {
+                     "type": "object",
+                     "properties": {
+                        "mintEndpoint": {
+                           "type": "string",
+                           "default": "/api/v1/auth/token/mint",
+                           "description": "Controller endpoint for delegated token minting."
+                        }
+                     },
+                     "additionalProperties": false
+                  },
+                  "scopes": {
+                     "type": "array",
+                     "items": {
+                        "type": "string"
+                     }
+                  },
+                  "requiredUserConsent": {
+                     "type": "boolean",
+                     "default": false
+                  }
+               },
+               "additionalProperties": false
+            },
+            "attribution": {
+               "type": "object",
+               "properties": {
+                  "actorFieldMappings": {
+                     "type": "object",
+                     "description": "Map target fields to actor templates (supports {{actor.*}} and {{request.*}}).",
+                     "additionalProperties": {
+                        "type": [
+                           "string",
+                           "number",
+                           "boolean"
+                        ]
+                     }
+                  },
+                  "commentTemplate": {
+                     "type": "string",
+                     "description": "Optional comment template for attribution logs (supports {{actor.*}})."
+                  },
+                  "injectionLocations": {
+                     "type": "array",
+                     "items": {
+                        "type": "string",
+                        "enum": [
+                           "body",
+                           "headers",
+                           "query",
+                           "comment"
+                        ]
+                     },
+                     "default": [
+                        "body"
+                     ],
+                     "uniqueItems": true
+                  }
+               },
+               "additionalProperties": false
+            },
+            "system": {
+               "type": "object",
+               "properties": {
+                  "allowWrites": {
+                     "type": "boolean",
+                     "default": true
+                  }
+               },
+               "additionalProperties": false
+            }
+         },
+         "additionalProperties": false
+      },
+      "rateLimit": {
+         "type": "object",
+         "description": "Outbound rate limit for requests from the dataplane to this external system. When set, the dataplane enforces the limit per base URL and handles HTTP 429 (wait and retry). When absent, global env defaults apply (CIP_EXECUTION_RATE_LIMIT_REQUESTS_PER_SECOND, CIP_EXECUTION_RATE_LIMIT_BURST_SIZE). Supports window-based (e.g. HubSpot 100/10s) or token-bucket style (requestsPerSecond + burstSize).",
+         "properties": {
+            "requestsPerWindow": {
+               "type": "integer",
+               "minimum": 1,
+               "description": "Maximum requests allowed in the time window (window-based limit). Example: 100 for HubSpot's 100 requests per 10 seconds."
+            },
+            "windowSeconds": {
+               "type": "integer",
+               "minimum": 1,
+               "description": "Time window in seconds. Used with requestsPerWindow. Example: 10 for HubSpot (100 requests per 10 seconds)."
+            },
+            "requestsPerSecond": {
+               "type": "number",
+               "minimum": 0.1,
+               "description": "Sustained request rate (token-bucket style). When used with burstSize, allows short bursts up to burstSize while refilling at this rate."
+            },
+            "burstSize": {
+               "type": "integer",
+               "minimum": 1,
+               "description": "Maximum burst size in tokens (token-bucket style). Used with requestsPerSecond."
+            }
+         },
+         "additionalProperties": false,
+         "oneOf": [
+            {
+               "required": [
+                  "requestsPerWindow",
+                  "windowSeconds"
+               ]
+            },
+            {
+               "required": [
+                  "requestsPerSecond",
+                  "burstSize"
+               ]
+            }
+         ],
+         "examples": [
+            {
+               "requestsPerWindow": 100,
+               "windowSeconds": 10
+            },
+            {
+               "requestsPerSecond": 10,
+               "burstSize": 100
+            }
+         ]
+      },
+      "performance": {
+         "type": "object",
+         "description": "Performance defaults for runtime paths in this external system.",
+         "properties": {
+            "cacheDefaults": {
+               "type": "object",
+               "description": "Default cache policy inherited by datasources unless overridden under sync.cache.",
+               "properties": {
+                  "enabled": {
+                     "type": "boolean",
+                     "default": true
+                  },
+                  "ttlSeconds": {
+                     "type": "integer",
+                     "minimum": 1,
+                     "maximum": 604800,
+                     "default": 1800
+                  }
+               },
+               "additionalProperties": false
+            }
+         },
+         "additionalProperties": false
+      },
+      "certification": {
+         "type": "object",
+         "description": "Public certification settings for external system version verification.",
+         "required": [
+            "enabled",
+            "publicKey",
+            "algorithm",
+            "issuer",
+            "version"
+         ],
+         "properties": {
+            "enabled": {
+               "type": "boolean",
+               "description": "Enable public certification metadata for this external system."
+            },
+            "publicKey": {
+               "type": "string",
+               "minLength": 1,
+               "description": "Public verification material (SPKI PEM for RS256). Private keys must never appear in config."
+            },
+            "publicKeyFingerprint": {
+               "type": "string",
+               "pattern": "^sha256:[0-9a-f]{64}$",
+               "description": "SHA-256 fingerprint of the SubjectPublicKeyInfo DER (same convention as integration certificate publicKeyFingerprint); must match embedded publicKey."
+            },
+            "contractHash": {
+               "type": "string",
+               "pattern": "^sha256:[0-9a-f]{64}$",
+               "description": "Optional copy of the active integration certificate contractHash (certification contract material digest) for drift checks; should match the dataplane active trusted certificate when present."
+            },
+            "algorithm": {
+               "type": "string",
+               "enum": [
+                  "RS256"
+               ],
+               "description": "Signing algorithm for integration certificate verification (RS256 only)."
+            },
+            "issuer": {
+               "type": "string",
+               "minLength": 1,
+               "description": "Certificate issuer identifier."
+            },
+            "version": {
+               "type": "string",
+               "minLength": 1,
+               "description": "Certification version identifier; must align with external system versioning."
+            },
+            "status": {
+               "type": "string",
+               "enum": [
+                  "passed",
+                  "not_passed",
+                  "pending"
+               ],
+               "description": "Outcome of certification evaluation for this block (aligns with DatasourceTestRun certificate.status)."
+            },
+            "level": {
+               "type": "string",
+               "enum": [
+                  "BRONZE",
+                  "SILVER",
+                  "GOLD",
+                  "PLATINUM"
+               ],
+               "description": "Achieved certification tier (aligns with integration certificate certificationLevel)."
+            }
+         },
+         "additionalProperties": false
+      }
+   },
+   "additionalProperties": false
 }
