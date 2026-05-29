@@ -17,6 +17,7 @@ aifabrix setup
 
 **What you get:** shared infra (Postgres, Redis, optional pgAdmin and Redis Commander), then Keycloak, Miso Controller, and Dataplane containers. Setup runs `up-infra` and `up-platform` for you.
 
+<a id="platform-topology-single-vs-full"></a>
 ### Platform topology (single vs full)
 
 Setup supports two platform topologies:
@@ -286,6 +287,38 @@ Base infra: ~0.5–1.5 GB for images; ~256 MB–1 GB RAM when running (more if p
 
 **Dev vs pro setup vs dev/tst/pro login environment?**  
 Setup **dev/pro** = installation profile on your machine. Login **`--environment dev|tst|pro`** = which controller/dataplane target you use after install. Same words, different step in the workflow.
+
+### Dataplane: Docker platform vs host-native development
+
+Two different workflows exist for working on Dataplane. They use different ports and paths — do not mix them when verifying a setup.
+
+| Workflow | Command | Traefik | Example URLs (developer-id **06**) |
+| --- | --- | --- | --- |
+| **Platform (Docker)** | `aifabrix run dataplane --reload` | Off in **single** mode; on in **full** mode | **Single:** API/UI `http://localhost:3601` (direct port). **Full:** `http://localhost:3600/data`, `http://localhost:3600/dev/data`, `http://localhost:3600/tst/data` |
+| **Host-native hot reload** | Dataplane repo `make dev` (FastAPI + Vite on the host) | No | API often `http://localhost:3611` (port patch); UI often `http://localhost:4611`. Uses repo `.env`, not `~/.aifabrix/config.yaml` Traefik flags |
+
+**When to use which:**
+
+- **`aifabrix run dataplane --reload`** (or platform setup) — matches production-like Docker networking, controller registration, and (in **full** mode) env-scoped paths. Use **`--env dev`**, **`--env tst`**, or **`--env pro`** when multiple controller environments exist.
+- **`make dev`** — fastest iteration on Python/TypeScript in the Dataplane repo without Traefik. Does **not** start the **full** platform’s `/dev/data` front-door slice; use Docker + **`--env dev`** to test that path.
+
+**Validation (single mode, dev06):**
+
+```bash
+curl -fsS http://localhost:3600/health    # Miso Controller
+curl -fsS http://localhost:3601/health    # Dataplane (direct port)
+aifabrix dev show                         # Platform mode: single, Traefik: off
+```
+
+**Validation (full mode, dev06)** — after `aifabrix setup --platform full`:
+
+```bash
+curl -fsS http://localhost:3600/miso/health
+curl -fsS http://localhost:3600/data/health
+curl -fsS http://localhost:3600/dev/data/health
+curl -fsS http://localhost:3600/tst/data/health
+docker ps | grep dataplane                # expect three dataplane containers
+```
 
 ---
 

@@ -155,7 +155,7 @@ Activate or passivate **environment-scoped resource names** in local Builder beh
 
 **Effective behavior** is: user gate **and** app flag **and** dev/tst. You normally set the app flag on apps that share Postgres/Docker across dev/tst (for example dataplane); you toggle the user gate when your machine should use prefixed keys and names.
 
-**When:** Turning shared-infrastructure mode on for your workspace, or reverting to classic single-env naming without editing YAML by hand.
+**When:** Turning shared-infrastructure mode on for your workspace, or reverting to classic single-env naming without editing YAML by hand. **`aifabrix setup --platform full`** sets this to **`true`** automatically; **`single`** sets it to **`false`**. You can still toggle it later with this command.
 
 **Usage:**
 ```bash
@@ -167,7 +167,7 @@ aifabrix dev set-scoped-resources false
 
 **Output:** Confirmation and the same summary as `aifabrix dev show` (including **Scoped resources** on/off).
 
-**See also:** [aifabrix dev show](#aifabrix-dev-show), [Application configuration – application.yaml](../configuration/application-yaml.md), [Secrets and config](../configuration/secrets-and-config.md).
+**See also:** [aifabrix dev show](#aifabrix-dev-show), [aifabrix setup – platform modes](infrastructure.md#aifabrix-setup), [Application configuration – application.yaml](../configuration/application-yaml.md), [Secrets and config](../configuration/secrets-and-config.md).
 
 ---
 
@@ -209,7 +209,7 @@ aifabrix dev set-format yaml
 
 Show developer configuration (ports and config vars).
 
-**What:** Displays current developer ID, calculated ports (app, Postgres, Redis, pgAdmin, Redis Commander), and config vars (environment, controller, scoped resources on/off, aifabrix-home, resolved home path, aifabrix-work, resolved `AIFABRIX_WORK`, aifabrix-secrets, aifabrix-env-config, etc.).
+**What:** Displays current developer ID, calculated ports (app, Postgres, Redis, pgAdmin, Redis Commander), and config vars (environment, controller, **platform mode** (`single` or `full`), **Traefik** on/off, scoped resources on/off, aifabrix-home, resolved home path, aifabrix-work, resolved `AIFABRIX_WORK`, aifabrix-secrets, aifabrix-env-config, etc.).
 
 **When:** After `dev refresh` or to verify your developer isolation settings.
 

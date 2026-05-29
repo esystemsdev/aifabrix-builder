@@ -8,6 +8,17 @@ The AI Fabrix Builder supports developer isolation, allowing multiple developers
 
 **Infra secrets and `kv://` keys:** Port and controller URLs here are separate from **secret key naming**. For where secrets live (`config.yaml`, `secrets.local.yaml`, `builder/<appKey>/env.template`), how **`aifabrix up-infra`** and **`aifabrix resolve`** create keys, and how **local** key suffixes relate to **Azure** Key Vault names, see [Infra parameters (configuration)](configuration/infra-parameters.md).
 
+### Platform topology (`setupPlatformMode`)
+
+**`aifabrix setup`** can persist **`setupPlatformMode`** in `~/.aifabrix/config.yaml`:
+
+| Mode | Traefik | Scoped resources | Typical controller URL (dev06) |
+| --- | --- | --- | --- |
+| **`single`** | Off | Off | `http://localhost:3600` (direct Miso port) |
+| **`full`** | On | On | `http://localhost:3600/miso` (shared front door) |
+
+In **full** mode, Dataplane is registered and run for **`pro`**, **`dev`**, and **`tst`** with path prefixes such as `/data`, `/dev/data`, and `/tst/data` on the front-door port. Use **`aifabrix dev show`** to confirm **Platform mode**, **Traefik**, and **Scoped resources**. See [Local Infrastructure Guide – platform topology](infrastructure.md#platform-topology-single-vs-full) and [aifabrix setup](commands/infrastructure.md#aifabrix-setup).
+
 ## Port Calculation
 
 Ports are calculated using the formula: `basePort + (developer-id * 100)`
