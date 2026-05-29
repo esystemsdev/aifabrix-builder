@@ -5,16 +5,20 @@
   "type": "openapi",
   "enabled": true,
   "authentication": {
-    "method": "oauth2",
-    "variables": {
-      "baseUrl": "https://api.hubapi.com",
-      "tokenUrl": "https://api.hubapi.com/oauth/v1/token",
-      "authorizationUrl": "https://app.hubspot.com/oauth/authorize",
-      "scope": "crm.objects.companies.read crm.objects.companies.write crm.objects.contacts.read crm.objects.contacts.write crm.objects.deals.read crm.objects.deals.write"
-    },
-    "security": {
-      "clientId": "kv://hubspot-test/clientId",
-      "clientSecret": "kv://hubspot-test/clientSecret"
+    "authType": "credential",
+    "credential": {
+      "credentialKey": "hubspot-test-cred",
+      "method": "oauth2",
+      "variables": {
+        "baseUrl": "https://api.hubapi.com",
+        "tokenUrl": "https://api.hubapi.com/oauth/v1/token",
+        "authorizationUrl": "https://app.hubspot.com/oauth/authorize",
+        "scope": "crm.objects.companies.read crm.objects.companies.write crm.objects.contacts.read crm.objects.contacts.write crm.objects.deals.read crm.objects.deals.write"
+      },
+      "security": {
+        "clientId": "kv://hubspot-test/clientId",
+        "clientSecret": "kv://hubspot-test/clientSecret"
+      }
     }
   },
   "configuration": [
@@ -61,4 +65,3 @@
     "hubspot-test-users"
   ]
 }
-
