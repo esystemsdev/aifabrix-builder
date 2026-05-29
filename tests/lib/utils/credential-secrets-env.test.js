@@ -269,6 +269,9 @@ describe('credential-secrets-env', () => {
       jest.spyOn(fs, 'existsSync').mockReturnValue(true);
       jest.spyOn(fs, 'readFileSync').mockReturnValue('KV_FOO=bar\n');
       storeCredentialSecrets.mockResolvedValue({ success: false, status: 403 });
+      const prev = process.env.AIFABRIX_DATAPLANE_API_KEY;
+      delete process.env.AIFABRIX_DATAPLANE_API_KEY;
+      delete process.env.API_KEY;
 
       const result = await pushCredentialSecrets('https://dp.example.com', { type: 'bearer', token: 't' }, {
         envFilePath: '/integration/myapp/.env',
@@ -277,6 +280,32 @@ describe('credential-secrets-env', () => {
 
       expect(result.pushed).toBe(0);
       expect(result.warning).toContain('credential:create');
+      if (prev !== undefined) process.env.AIFABRIX_DATAPLANE_API_KEY = prev;
+      fs.existsSync.mockRestore();
+      fs.readFileSync.mockRestore();
+    });
+
+    it('should retry credential push with lab API key after 403', async() => {
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('KV_FOO=bar\n');
+      storeCredentialSecrets
+        .mockResolvedValueOnce({ success: false, status: 403 })
+        .mockResolvedValueOnce({ success: true, stored: 1 });
+      process.env.AIFABRIX_DATAPLANE_API_KEY = 'lab-api-key';
+
+      const result = await pushCredentialSecrets(
+        'https://dp.example.com',
+        { type: 'client-token', token: 'app-token' },
+        { envFilePath: '/integration/myapp/.env', appName: 'myapp' }
+      );
+
+      expect(result.pushed).toBe(1);
+      expect(storeCredentialSecrets).toHaveBeenCalledTimes(2);
+      expect(storeCredentialSecrets.mock.calls[1][1]).toEqual({
+        type: 'bearer',
+        token: 'lab-api-key'
+      });
+      delete process.env.AIFABRIX_DATAPLANE_API_KEY;
       fs.existsSync.mockRestore();
       fs.readFileSync.mockRestore();
     });
