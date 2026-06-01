@@ -4,14 +4,30 @@
 
 'use strict';
 
-const fs = require('node:fs');
-const os = require('os');
 const path = require('path');
+
+/** Real disk I/O; other suites in the worker may jest.mock('fs') and break rmSync recursive cleanup. */
+jest.unmock('../../../lib/internal/fs-real-sync');
+
+const {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  rmSync
+} = require('../../../lib/internal/fs-real-sync');
 
 const {
   datasourceKeysFromPack,
   loadPackFromFile
 } = require('../../../lib/lifecycle/scenario-upload');
+
+/**
+ * Project-local temp root (avoids /tmp + mocked fs.rmSync ENOTEMPTY on CI workers).
+ * @returns {string}
+ */
+function scenarioUploadFixtureRoot() {
+  return path.join(__dirname, '../../../.temp/jest-scenario-upload');
+}
 
 describe('scenario-upload', () => {
   it('extracts datasource keys from pack scenarios', () => {
@@ -27,9 +43,11 @@ describe('scenario-upload', () => {
   });
 
   it('loads pack YAML from disk', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'scenarios-'));
+    const root = scenarioUploadFixtureRoot();
+    mkdirSync(root, { recursive: true });
+    const dir = mkdtempSync(path.join(root, 'pack-'));
     const filePath = path.join(dir, 'pack.yaml');
-    fs.writeFileSync(
+    writeFileSync(
       filePath,
       [
         'apiVersion: dataplane.aifabrix.ai/v1',
@@ -50,8 +68,15 @@ describe('scenario-upload', () => {
       ].join('\n'),
       'utf8'
     );
-    const doc = loadPackFromFile(filePath);
-    expect(doc.metadata.key).toBe('test-pack');
-    fs.rmSync(dir, { recursive: true, force: true });
+    try {
+      const doc = loadPackFromFile(filePath);
+      expect(doc.metadata.key).toBe('test-pack');
+    } finally {
+      try {
+        rmSync(dir, { recursive: true, force: true });
+      } catch {
+        // ignore cleanup errors on shared CI workers
+      }
+    }
   });
 });

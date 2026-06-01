@@ -8,7 +8,9 @@ The **tests/manual** directory contains tests that call **real** Controller and 
 - **api-pipeline.test.js** – pipeline.api (health, validate, get deployment)
 - **api-credentials.test.js** – credentials.api (list credentials, Dataplane)
 - **api-external-systems.test.js** – external-systems.api (list, get, Dataplane)
-- **api-lifecycle.test.js** – lifecycle.api (GET system certification report; Dataplane 419.0)
+- **api-lifecycle.test.js** – lifecycle.api (GET certification report, optional details; POST run when `MANUAL_CERTIFICATION_LIFECYCLE_RUN=1`)
+- **api-governance-scenario-pack.test.js** – governance-scenario-pack.api (GET pack, POST run when pack exists; Dataplane 419.0)
+- **certification-cli-smoke.test.js** – plan 150.0 CLI smoke (`lifecycle --json`; `verify-* --json` when `MANUAL_CERTIFICATION_VERIFY=1`)
 - **api-datasources.test.js** – datasources-core.api (list, executions, get, status, Dataplane)
 - **api-datasources-extended.test.js** – datasources-extended.api (records, grants, Dataplane)
 - **api-external-test-e2e.test.js** – external-test.api (test-e2e sync, getE2ETestRun; Dataplane; Bearer/API key only)
@@ -39,11 +41,23 @@ Before any manual test runs, the suite runs **`aifabrix auth status --validate`*
 npm run test:manual
 ```
 
+(`pnpm run test:manual` works when using pnpm in this repo.)
+
 Run a single file:
 
 ```bash
 npx jest --config jest.config.manual.js --runInBand tests/manual/api-auth.test.js
 ```
+
+### Plan 150.0 — Enterprise AI Certification (optional env)
+
+| Variable | Effect |
+| --- | --- |
+| `MANUAL_CERTIFICATION_SYSTEM_KEY` | Pin system key for CLI smoke (must have `integration/<key>/` for lifecycle CLI) |
+| `MANUAL_CERTIFICATION_VERIFY=1` | Enable heavy `verify-operations`, `verify-trust`, `verify-governance` CLI tests in **certification-cli-smoke.test.js** |
+| `MANUAL_CERTIFICATION_LIFECYCLE_RUN=1` | Enable POST `lifecycle/run` in **api-lifecycle.test.js** (may execute missing verify steps on dataplane) |
+
+Recommended order for full live proof (operator): `upload` → `verify-operations` → `verify-trust` → `verify-governance` → `lifecycle` (see `.cursor/plans/Done/150.0-lifecycle-ui.plan.md`).
 
 ## Required configuration
 

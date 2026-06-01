@@ -8,8 +8,15 @@
 'use strict';
 
 const { getManualTestAuth } = require('./require-auth');
+const {
+  normalizeListItems,
+  systemKeyFromItem
+} = require('./certification-helpers');
 const { listExternalSystems } = require('../../lib/api/external-systems.api');
-const { getSystemLifecycleReport } = require('../../lib/api/lifecycle.api');
+const {
+  getSystemLifecycleReport,
+  runSystemLifecycle
+} = require('../../lib/api/lifecycle.api');
 
 describe('Manual API tests – lifecycle.api (real Dataplane)', () => {
   let dataplaneUrl;
@@ -26,16 +33,11 @@ describe('Manual API tests – lifecycle.api (real Dataplane)', () => {
       return;
     }
     const listRes = await listExternalSystems(dataplaneUrl, authConfig, { pageSize: 1 });
-    if (!listRes?.success) {
-      return;
-    }
-    const items = Array.isArray(listRes.data)
-      ? listRes.data
-      : (listRes.data?.items ?? listRes.data?.data ?? []);
+    const items = normalizeListItems(listRes);
     if (items.length === 0) {
       return;
     }
-    const systemKey = items[0].key ?? items[0].id ?? items[0].systemKey;
+    const systemKey = systemKeyFromItem(items[0]);
     if (!systemKey) {
       return;
     }
@@ -47,5 +49,50 @@ describe('Manual API tests – lifecycle.api (real Dataplane)', () => {
     expect(report.systemKey).toBe(systemKey);
     expect(report.certification).toBeDefined();
     expect(report.certification.level).toBeDefined();
+  });
+
+  it('GET lifecycle with details=true returns pillar blocks when dataplane provides them', async() => {
+    if (!dataplaneUrl) {
+      return;
+    }
+    const listRes = await listExternalSystems(dataplaneUrl, authConfig, { pageSize: 1 });
+    const items = normalizeListItems(listRes);
+    if (items.length === 0) {
+      return;
+    }
+    const systemKey = systemKeyFromItem(items[0]);
+    if (!systemKey) {
+      return;
+    }
+
+    const report = await getSystemLifecycleReport(dataplaneUrl, authConfig, systemKey, {
+      details: true
+    });
+    expect(report.systemKey).toBe(systemKey);
+    expect(report.certification).toBeDefined();
+    const hasPillar =
+      report.operations !== undefined ||
+      report.trust !== undefined ||
+      report.governance !== undefined;
+    expect(hasPillar || report.datasources !== undefined).toBe(true);
+  });
+
+  it('POST lifecycle/run returns report envelope when MANUAL_CERTIFICATION_LIFECYCLE_RUN=1', async() => {
+    if (process.env.MANUAL_CERTIFICATION_LIFECYCLE_RUN !== '1' || !dataplaneUrl) {
+      return;
+    }
+    const listRes = await listExternalSystems(dataplaneUrl, authConfig, { pageSize: 1 });
+    const items = normalizeListItems(listRes);
+    if (items.length === 0) {
+      return;
+    }
+    const systemKey = systemKeyFromItem(items[0]);
+    if (!systemKey) {
+      return;
+    }
+
+    const runRes = await runSystemLifecycle(dataplaneUrl, authConfig, systemKey, {});
+    expect(runRes.report).toBeDefined();
+    expect(runRes.report.systemKey).toBe(systemKey);
   });
 });
