@@ -1,3 +1,25 @@
+## [2.46.0] - 2026-06-01
+
+### Added
+- **Enterprise AI Certification (Plan 150):** System-centric **`aifabrix verify-operations`**, **`verify-trust`**, **`verify-governance`**, and **`lifecycle`** — operational readiness, AI business context confidence, governance enforcement, and BRONZE→PLATINUM certification report. Management-first TTY with hero metrics; technical breakdown behind **`-v` / `--verbose`**; **`--json`** machine envelope. Top-level **`test-trust`** / **`test-governance`** replaced by verify commands; **`datasource verify-trust`** retained. See **`docs/commands/enterprise-ai-certification.md`**.
+- **`aifabrix setup --platform <mode>` (Plan 149):** **`single`** (direct ports, classic dev isolation) vs **`full`** (Traefik front door on `localhost:${3000 + developerId×100}`, env-scoped dataplane paths, controller environments **miso + dev + tst + pro**). Persists **`setupPlatformMode`** in `config.yaml`; fresh-install prompt and **`aifabrix setup --platform single|full`**.
+- **`aifabrix secret get <key>`:** Retrieve one secret (user or **`--shared`** store); **`--exists`** for script exit checks; **`--json`** for automation.
+- **`--force` on sync-before-test paths (Plan 148):** **`datasource test-e2e`**, **`test-integration`**, **`verify-trust`**, **`verify-operations`**, **`verify-governance`**, and **`lifecycle --run`** forward **`--force`** to **`uploadExternalSystem`** (same as **`aifabrix upload --force`**).
+
+### Changed
+- **Resolve missing-secrets UX (Plan 146):** **`aifabrix resolve`** for integration apps uses **`local`** env mode (not Docker); missing-secret errors cite **`env.template`**, **`secret set`**, and stale OAuth hints; **`repair`** prunes orphan **`KV_*`** lines not in the system auth set; doctor footer suppressed for local-only missing secrets. CLI output matrix adds **Execution** column (**local | docker | online**).
+- **Pipeline deployment auth (Plan 148):** On pipeline **401** with device Bearer, auto-retry with application **`x-client-token`** when app client credentials exist; document **`AIFABRIX_DEPLOYMENT_AUTH=client-credentials`** for CI/lab publish.
+- **Full platform mode (Plan 149):** Traefik **`Host()`** labels use **`localhost`** when **`remote-server`** is unset; **`platform-controller`** and setup footer resolve **`http://localhost:{port}/miso`** in full mode vs direct app port in single mode; **`up-dataplane`** / **`up-platform`** register and run dataplane in **pro**, **dev**, and **tst** when mode is **full**.
+- **Governance scenario packs (Plan 150):** **`upload`** / **`download`** push and pull scenario YAML to the dataplane; **`verify-governance`** uses persisted DB packs by default (**`--pack`** for local authoring override).
+- **External system authentication:** **`bearerToken`** auth method support in repair/wizard flows and credential field definitions.
+
+### Fixed
+- **`test-e2e --sync` ignored `--force` (Plan 148):** Internal sync paths called **`uploadExternalSystem`** without **`force: true`**, causing Plan 331 overlap failures after local dimension/FK edits even when **`aifabrix upload --force`** succeeded.
+- **Missing-kv namespace hints (Plan 148):** Generic suggestion when the same path segment exists under another populated secrets namespace (no lab-specific hardcoding).
+
+### Technical
+- **Plans 146–150:** `lib/lifecycle/*`, `lib/api/lifecycle.api.js`, `lib/api/governance-scenario-pack.api.js`, `lib/commands/verify-*`, setup platform mode (`lib/utils/setup-platform-mode.js`, compose Traefik label fixes), `lib/commands/auth-status-client-tokens.js`, Jest isolated project config and live Fabrix hooks. User docs: **`docs/commands/enterprise-ai-certification.md`**, **`infrastructure.md`**, **`developer-isolation.md`**, **`utilities.md`**; CLI matrix and **`cli-product-neutral`** rule updated. **673** tests passing.
+
 ## [2.45.6] - 2026-05-22
 
 ### Changed
