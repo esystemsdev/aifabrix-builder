@@ -28,7 +28,7 @@ jest.mock('../../../lib/commands/upload', () => ({
   })
 }));
 
-const fs = require('fs');
+const fsActual = require('fs');
 const { getIntegrationPath } = require('../../../lib/utils/paths');
 const { resolveApplicationConfigPath } = require('../../../lib/utils/app-config-resolver');
 const { loadConfigFile } = require('../../../lib/utils/config-format');
@@ -56,12 +56,14 @@ const upload = require('../../../lib/commands/upload');
 describe('test-e2e-external', () => {
   const appPath = path.join(process.cwd(), 'integration', 'hubspot-demo');
   const configPath = path.join(appPath, 'application.yaml');
+  /** @type {jest.SpyInstance} */
+  let existsSyncSpy;
 
   beforeEach(() => {
     jest.clearAllMocks();
     getIntegrationPath.mockReturnValue(appPath);
     resolveApplicationConfigPath.mockReturnValue(configPath);
-    jest.spyOn(fs, 'existsSync').mockImplementation((p) => {
+    existsSyncSpy = jest.spyOn(fsActual, 'existsSync').mockImplementation((p) => {
       const s = String(p);
       return s === appPath || s === configPath || s.endsWith('-system.json') || s.endsWith('-system.yaml') || s.endsWith('-datasource-companies.json');
     });
@@ -91,7 +93,7 @@ describe('test-e2e-external', () => {
   });
 
   afterEach(() => {
-    fs.existsSync.mockRestore?.();
+    existsSyncSpy?.mockRestore();
   });
 
   describe('runTestE2EForExternalSystem', () => {
@@ -101,7 +103,7 @@ describe('test-e2e-external', () => {
     });
 
     it('throws when integration path does not exist', async() => {
-      fs.existsSync.mockImplementation((p) => p !== appPath);
+      existsSyncSpy.mockImplementation((p) => p !== appPath);
       await expect(runTestE2EForExternalSystem('hubspot-demo')).rejects.toThrow('Integration path not found');
     });
 
@@ -134,7 +136,12 @@ describe('test-e2e-external', () => {
       expect(upload.uploadExternalSystem).toHaveBeenCalledTimes(1);
       expect(upload.uploadExternalSystem).toHaveBeenCalledWith(
         'hubspot-demo',
-        expect.objectContaining({ minimal: true, verbose: true })
+        expect.objectContaining({
+          minimal: true,
+          verbose: false,
+          silentResolve: true,
+          syncMode: true
+        })
       );
       expect(runDatasourceTestE2E).toHaveBeenCalled();
     });

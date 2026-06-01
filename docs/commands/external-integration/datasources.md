@@ -30,7 +30,7 @@ Manage external data sources.
 - `log-test` - Display latest or specified structural validation log
 - `log-integration` - Display latest or specified integration test log
 - `log-e2e` - Display latest or specified E2E test log
-- `log-trust` - Display latest or specified agent trust log (`test-trust --debug`)
+- `log-trust` - Display latest or specified agent trust log (`verify-trust --debug`)
 - `clean-logs` - Remove saved debug JSON under `integration/<systemKey>/logs/`
 
 ---
@@ -265,7 +265,7 @@ Show the latest E2E test log produced by `datasource test-e2e --debug`.
 <a id="aifabrix-datasource-log-trust-datasourcekey"></a>
 ### aifabrix datasource log-trust <datasourceKey>
 
-Show the latest agent trust log produced by `datasource test-trust --debug`.
+Show the latest agent trust log produced by `datasource verify-trust --debug`.
 
 **What:** Prints a readable view of the latest `test-trust-*.json` log in `integration/<systemKey>/logs/` (trust decision, confidence, warnings, and findings summary).
 
@@ -274,7 +274,7 @@ Show the latest agent trust log produced by `datasource test-trust --debug`.
 ```bash
 aifabrix datasource log-trust hubspot-companies
 aifabrix datasource log-trust hubspot-companies --app test-e2e-hubspot
-aifabrix datasource log-trust hubspot-companies --file integration/test-e2e-hubspot/logs/test-trust-hubspot-companies-2026-05-19T12-00-00-000Z.json
+aifabrix datasource log-trust hubspot-companies --file integration/test-e2e-hubspot/logs/verify-trust-hubspot-companies-2026-05-19T12-00-00-000Z.json
 ```
 
 **Options:** `-a, --app <app>`, `-f, --file <path>` (same as other `log-*` commands).

@@ -4,10 +4,8 @@
  * @fileoverview
  */
 
-const {
-  globalLiveFabrixHooks,
-  createSetupCiLiveFabrixGuardProject
-} = require('./jest.global-live-fabrix-hooks');
+const { globalLiveFabrixHooks } = require('./jest.global-live-fabrix-hooks');
+const { buildIsolatedProjects } = require('./jest.isolated-projects');
 
 // Detect CI environment (GitHub Actions, CI simulation, etc.)
 const isCI = process.env.CI === 'true' || process.env.CI_SIMULATION === 'true';
@@ -92,6 +90,10 @@ const defaultProject = {
       '\\\\tests\\\\lib\\\\commands\\\\parameters-validate.test.js',
       'lib/commands/parameters-validate.test.js',
       'parameters-validate\\.test\\.js',
+      '/tests/lib/commands/test-e2e-external.test.js',
+      '\\\\tests\\\\lib\\\\commands\\\\test-e2e-external.test.js',
+      'lib/commands/test-e2e-external.test.js',
+      'test-e2e-external\\.test\\.js',
       '/tests/lib/commands/repair-openapi-sync.test.js',
       '\\\\tests\\\\lib\\\\commands\\\\repair-openapi-sync.test.js',
       'lib/commands/repair-openapi-sync.test.js',
@@ -342,147 +344,7 @@ const defaultProject = {
   maxWorkers: 1
 };
 
-const isolatedProjects = [
-  makeIsolatedProject('cli-utils', ['**/tests/lib/utils/cli-utils.test.js']),
-  makeIsolatedProject('external-system-display', ['**/tests/lib/utils/external-system-display.test.js']),
-  makeIsolatedProject('dev-hosts-helper', ['**/tests/lib/utils/dev-hosts-helper.test.js']),
-  makeIsolatedProject('parameters-validate', ['**/tests/lib/commands/parameters-validate.test.js']),
-  makeIsolatedProject('repair-openapi-sync', ['**/tests/lib/commands/repair-openapi-sync.test.js']),
-  makeIsolatedProject('paths-app-listing', ['**/tests/lib/utils/paths-app-listing.test.js']),
-  makeIsolatedProject('paths-system-builder-resolution', [
-    '**/tests/lib/utils/paths-system-builder-resolution.test.js'
-  ]),
-  makeIsolatedProject('manifest-location', ['**/tests/lib/utils/manifest-location.test.js']),
-  makeIsolatedProject('installation-log', ['**/tests/lib/utils/installation-log.test.js']),
-  makeIsolatedProject('secrets-ancestor-paths', ['**/tests/lib/utils/secrets-ancestor-paths.test.js']),
-  makeIsolatedProject('datasource-validation-watch', [
-    '**/tests/lib/utils/datasource-validation-watch.test.js'
-  ]),
-  makeIsolatedProject('log-viewer', [
-    '**/tests/lib/datasource/log-viewer.test.js',
-    '**/tests/lib/datasource/log-viewer-structural.test.js',
-    '**/tests/lib/datasource/log-viewer-run.test.js'
-  ]),
-  makeIsolatedProject('audit-evidence-extract', [
-    '**/tests/lib/datasource/audit-evidence-extract.test.js'
-  ]),
-  makeIsolatedProject('manifest-source-emit', ['**/tests/lib/utils/manifest-source-emit.test.js']),
-  makeIsolatedProject('register-aifabrix-shell-env', [
-    '**/tests/lib/utils/register-aifabrix-shell-env.test.js'
-  ]),
-  makeIsolatedProject('datasource-test-run-schema-sync', [
-    '**/tests/lib/utils/datasource-test-run-schema-sync.test.js'
-  ]),
-  makeIsolatedProject('infra-platform-contract', [
-    '**/tests/lib/parameters/infra-platform-contract.test.js'
-  ]),
-  makeIsolatedProject('application-frontdoor-paths-contract', [
-    '**/tests/lib/templates/application-frontdoor-paths.contract.test.js'
-  ]),
-  makeIsolatedProject('database-secret-values', [
-    '**/tests/lib/parameters/database-secret-values.test.js'
-  ]),
-  makeIsolatedProject('infra-parameter-validate', [
-    '**/tests/lib/parameters/infra-parameter-validate.test.js'
-  ]),
-  makeIsolatedProject('infra-parameter-catalog', [
-    '**/tests/lib/parameters/infra-parameter-catalog.test.js'
-  ]),
-  makeIsolatedProject('urls-local-registry', ['**/tests/lib/utils/urls-local-registry.test.js']),
-  makeIsolatedProject('aifabrix-runtime-config-dir', [
-    '**/tests/lib/utils/aifabrix-runtime-config-dir.test.js'
-  ]),
-  makeIsolatedProject('platform-env-template-kv-catalog', [
-    '**/tests/lib/parameters/platform-env-template-kv-catalog.test.js'
-  ]),
-  makeIsolatedProject('resolve-infra-state-paths', [
-    '**/tests/lib/infrastructure/resolve-infra-state-paths.test.js'
-  ]),
-  makeIsolatedProject('dev-ssh-config-helper', [
-    '**/tests/lib/utils/dev-ssh-config-helper.test.js'
-  ]),
-  makeIsolatedProject('ssh-key-helper', ['**/tests/lib/utils/ssh-key-helper.test.js']),
-  makeIsolatedProject('secrets-ensure-catalog-fallback', [
-    '**/tests/lib/core/secrets-ensure-catalog-fallback.test.js'
-  ]),
-  makeIsolatedProject('secrets-ensure', ['**/tests/lib/core/secrets-ensure.test.js']),
-  makeIsolatedProject('url-declarative-vdir-inactive-env', [
-    '**/tests/lib/utils/url-declarative-vdir-inactive-env.test.js'
-  ]),
-  makeIsolatedProject('url-declarative-user-cfg-per-app-proxy', [
-    '**/tests/lib/utils/url-declarative-user-cfg-per-app-proxy.test.js'
-  ]),
-  makeIsolatedProject('declarative-url-paths-spy-suites', [
-    '**/tests/lib/utils/url-declarative-expand-traefik-off-no-usercfg.test.js',
-    '**/tests/lib/core/secrets-env-declarative-show-urls.test.js',
-    '**/tests/lib/utils/url-declarative-registry-internal-docker-origin.test.js'
-  ]),
-  makeIsolatedProject('platform-urls-registry-validation', [
-    '**/tests/lib/commands/platform-urls-registry.validation.test.js'
-  ]),
-  makeIsolatedProject('env-copy-resolve-output', ['**/tests/lib/utils/env-copy-resolve-output.test.js']),
-  makeIsolatedProject('write-env-output-reload', ['**/tests/lib/utils/write-env-output-reload.test.js']),
-  makeIsolatedProject('app-service-env-from-builder', [
-    '**/tests/lib/utils/app-service-env-from-builder.test.js'
-  ]),
-  makeIsolatedProject('infra-kv-discovery', ['**/tests/lib/parameters/infra-kv-discovery.test.js']),
-  makeIsolatedProject('infra-env-defaults', ['**/tests/lib/utils/infra-env-defaults.test.js']),
-  makeIsolatedProject('compose-traefik-template', [
-    '**/tests/lib/infrastructure/compose-traefik-template.test.js'
-  ]),
-  makeIsolatedProject('generator-external-rbac', [
-    '**/tests/lib/generator/generator-external-rbac.test.js'
-  ]),
-  makeIsolatedProject('helpers-ensure-admin-secrets', [
-    '**/tests/lib/infrastructure/helpers-ensure-admin-secrets.test.js'
-  ]),
-  makeIsolatedProject('secrets-generator', ['**/tests/lib/utils/secrets-generator.test.js']),
-  makeIsolatedProject('app-uncovered-lines', ['**/tests/lib/app/app-uncovered-lines.test.js']),
-  makeIsolatedProject('ensure-dev-certs-for-remote-docker', [
-    '**/tests/lib/utils/ensure-dev-certs-for-remote-docker.test.js'
-  ]),
-  makeIsolatedProject('generator-error-paths', ['**/tests/lib/generator/generator-error-paths.test.js']),
-  makeIsolatedProject('generator-validation', ['**/tests/lib/generator/generator-validation.test.js']),
-  makeIsolatedProject('secrets-databaselog', ['**/tests/lib/core/secrets-databaselog.test.js']),
-  makeIsolatedProject('schema-241-alignment', ['**/tests/lib/validation/schema-241-alignment.test.js']),
-  makeIsolatedProject('schema-resolver-order', ['**/tests/lib/utils/schema-resolver-order.test.js']),
-  makeIsolatedProject('app-module', ['**/tests/lib/app/app.test.js']),
-  makeIsolatedProject('admin-secrets', ['**/tests/lib/core/admin-secrets.test.js']),
-  makeIsolatedProject('validate-datasource-parsed', [
-    '**/tests/lib/datasource/validate-datasource-parsed.test.js'
-  ]),
-  makeIsolatedProject('capability-run-real-fs', [
-    '**/tests/lib/datasource/run-capability-copy.test.js',
-    '**/tests/lib/datasource/run-capability-diff.test.js',
-    '**/tests/lib/datasource/run-capability-edit.test.js',
-    '**/tests/lib/datasource/run-capability-remove.test.js'
-  ]),
-  makeIsolatedProject('log-cleaner', ['**/tests/lib/datasource/log-cleaner.test.js']),
-  makeIsolatedProject('datasource-exporter-service', [
-    '**/tests/lib/datasource/datasource-exporter-service.test.js'
-  ]),
-  makeIsolatedProject('protection-paths', ['**/tests/lib/protection/paths.test.js']),
-  makeIsolatedProject('protection-resolve', ['**/tests/lib/protection/protection-resolve.test.js']),
-  makeIsolatedProject('protection-create-helpers', [
-    '**/tests/lib/protection/run-protection-create-helpers.test.js'
-  ]),
-  makeIsolatedProject('governance-pack-loader', [
-    '**/tests/lib/governance/governance-pack-loader.test.js'
-  ]),
-  makeIsolatedProject('protection-validate-batch', [
-    '**/tests/lib/protection/validate-batch.test.js'
-  ]),
-  makeIsolatedProject('aifabrix-runtime-sandbox', [
-    '**/tests/helpers/aifabrix-runtime-sandbox.test.js'
-  ]),
-  makeIsolatedProject('aifabrix-runtime-backup', [
-    '**/tests/helpers/aifabrix-runtime-backup.test.js'
-  ]),
-  makeIsolatedProject('paths-jest-sandbox-integration', [
-    '**/tests/lib/utils/paths-jest-sandbox-integration.test.js'
-  ]),
-  createSetupCiLiveFabrixGuardProject({ isCI, sharedTransform })
-];
+const isolatedProjects = buildIsolatedProjects(makeIsolatedProject, isCI, sharedTransform);
 
 const allProjects = [defaultProject, ...isolatedProjects];
 

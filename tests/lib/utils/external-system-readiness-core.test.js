@@ -4,6 +4,7 @@
 
 const {
   unwrapPublicationResult,
+  isPublicationUnchanged,
   classifyDatasourceTierADetail,
   classifyDatasourceTierA,
   formatTierAPartialHint,
@@ -31,6 +32,30 @@ describe('external-system-readiness-core', () => {
 
     it('returns null when shape invalid', () => {
       expect(unwrapPublicationResult({ success: true, data: { foo: 1 } })).toBeNull();
+    });
+  });
+
+  describe('isPublicationUnchanged', () => {
+    it('returns true when uploadStatus is unchanged', () => {
+      expect(
+        isPublicationUnchanged({
+          uploadStatus: 'unchanged',
+          uploadId: 'u1',
+          system: { key: 'x' },
+          datasources: []
+        })
+      ).toBe(true);
+    });
+
+    it('returns false for published status', () => {
+      expect(
+        isPublicationUnchanged({
+          uploadStatus: 'published',
+          uploadId: 'u1',
+          system: { key: 'x' },
+          datasources: []
+        })
+      ).toBe(false);
     });
   });
 

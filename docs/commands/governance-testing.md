@@ -4,7 +4,7 @@
 
 Run **governance scenario packs** to prove ABAC and protection visibility without logging in as every subject user or printing record payloads in the terminal.
 
-This command is **separate from** [`test-e2e`](external-integration-testing.md): `test-e2e` exercises vendor connectivity, sync, and CIP; **`test-governance`** proves which record **keys** each subject can see after ABAC.
+This command is **separate from** [`test-e2e`](external-integration-testing.md): `test-e2e` exercises vendor connectivity, sync, and CIP; **`verify-governance`** proves which record **keys** each subject can see after ABAC.
 
 ---
 
@@ -14,7 +14,7 @@ This command is **separate from** [`test-e2e`](external-integration-testing.md):
 - Operator role with **governance:evaluate** (platform admin, security admin, or developer — see [permissions](permissions.md)). After adding this permission to RBAC, re-login or use a role that includes it.
 - External system folder on disk: `integration/<systemKey>/`, published to the dataplane (e.g. `aifabrix upload <systemKey>`).
 
-### Baseline data (you run this; not part of `test-governance`)
+### Baseline data (you run this; not part of `verify-governance`)
 
 The command does **not** load fixtures or identity for you. Complete this order using **only** builder CLI docs:
 
@@ -30,7 +30,7 @@ Keep scenario packs and fixture CSV under **your** `integration/<systemKey>/` tr
 ## Command
 
 ```bash
-aifabrix test-governance <systemKey> [options]
+aifabrix verify-governance <systemKey> [options]
 ```
 
 ### Options
@@ -58,10 +58,10 @@ aifabrix test-governance <systemKey> [options]
 ## Examples
 
 ```bash
-aifabrix test-governance <systemKey>
-aifabrix test-governance <systemKey> --pack scenarios/<systemKey>-v1.yaml -v
-aifabrix test-governance <systemKey> --no-sync --scenario <scenario-id>
-aifabrix test-governance <systemKey> --json
+aifabrix verify-governance <systemKey>
+aifabrix verify-governance <systemKey> --pack scenarios/<systemKey>-v1.yaml -v
+aifabrix verify-governance <systemKey> --no-sync --scenario <scenario-id>
+aifabrix verify-governance <systemKey> --json
 ```
 
 ---
@@ -80,7 +80,7 @@ To author a new pack:
 
 ## What this does not do
 
-- Does **not** merge with `test-e2e` or `test-trust`.
+- Does **not** merge with `test-e2e` or `verify-trust`.
 - Does **not** auto-run `datasource load` (run baseline load explicitly in CI or locally).
 - Does **not** print full record metadata in TTY or `--json` output.
 

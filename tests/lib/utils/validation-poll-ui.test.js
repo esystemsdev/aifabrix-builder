@@ -14,6 +14,15 @@ jest.mock('../../../lib/utils/logger', () => ({
 }));
 
 describe('validation-poll-ui', () => {
+  const originalIsTTY = process.stdout.isTTY;
+
+  afterEach(() => {
+    Object.defineProperty(process.stdout, 'isTTY', {
+      value: originalIsTTY,
+      configurable: true
+    });
+  });
+
   it('buildValidationPollSpinnerText handles missing envelope', () => {
     const deadlineMs = Date.now() + 120000;
     const t = buildValidationPollSpinnerText(null, 0, deadlineMs);
@@ -40,15 +49,18 @@ describe('validation-poll-ui', () => {
   });
 
   it('createValidationPollHandlers finish is safe on non-TTY path', () => {
-    const prev = process.stdout.isTTY;
-    process.stdout.isTTY = false;
-    try {
-      const ui = createValidationPollHandlers(Date.now() + 5000);
-      expect(ui.usesSpinner).toBe(false);
-      ui.onPollProgress({ reportCompleteness: 'partial', status: 'x' }, 0, {});
-      ui.finish();
-    } finally {
-      process.stdout.isTTY = prev;
-    }
+    Object.defineProperty(process.stdout, 'isTTY', { value: false, configurable: true });
+    const ui = createValidationPollHandlers(Date.now() + 5000);
+    expect(ui.usesSpinner).toBe(false);
+    ui.onPollProgress({ reportCompleteness: 'partial', status: 'x' }, 0, {});
+    ui.finish();
+  });
+
+  it('createValidationPollHandlers quiet mode is a no-op', () => {
+    Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true });
+    const ui = createValidationPollHandlers(Date.now() + 5000, { quiet: true });
+    expect(ui.usesSpinner).toBe(false);
+    ui.onPollProgress({ reportCompleteness: 'partial' }, 0, {});
+    ui.finish();
   });
 });

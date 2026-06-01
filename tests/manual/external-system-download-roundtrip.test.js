@@ -37,8 +37,8 @@ describe('External System Download Roundtrip', () => {
   });
 
   /**
-   * Builds deploy JSON matching download output: system with auth.security,
-   * datasources, configuration augmented for env.template.
+   * Builds deploy JSON matching download/split output: nested authentication
+   * (authType + credential), datasources, configuration for env.template.
    */
   function buildRoundtripDeployJson() {
     const system = {
@@ -48,15 +48,20 @@ describe('External System Download Roundtrip', () => {
       type: 'openapi',
       enabled: true,
       authentication: {
-        method: 'oauth2',
-        variables: {
-          baseUrl: 'https://api.example.com',
-          tokenUrl: 'https://api.example.com/oauth/token',
-          authorizationUrl: 'https://api.example.com/oauth/authorize'
-        },
-        security: {
-          clientId: `kv://${systemKey}/clientId`,
-          clientSecret: `kv://${systemKey}/clientSecret`
+        authType: 'credential',
+        credential: {
+          credentialKey: `${systemKey}-cred`,
+          method: 'oauth2',
+          variables: {
+            baseUrl: 'https://api.example.com',
+            tokenUrl: 'https://api.example.com/oauth/token',
+            authorizationUrl: 'https://api.example.com/oauth/authorize'
+          },
+          security: {
+            clientId: `kv://${systemKey}/clientId`,
+            clientSecret: `kv://${systemKey}/clientSecret`
+          },
+          writeOnce: true
         }
       },
       configuration: [

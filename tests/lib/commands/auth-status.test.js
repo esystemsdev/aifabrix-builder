@@ -54,6 +54,14 @@ describe('Auth Status Command Module', () => {
       cliVersion: '2.45.0',
       compatible: true
     });
+    config.normalizeControllerUrl = jest.fn(url => (url || '').replace(/\/+$/, ''));
+    config.getClientToken = jest.fn().mockResolvedValue(null);
+    tokenManager.getOrRefreshClientToken.mockReset();
+    tokenManager.loadClientCredentials.mockReset();
+    tokenManager.loadClientCredentials.mockResolvedValue(null);
+    tokenManager.refreshClientToken.mockReset();
+    tokenManager.isTokenExpired.mockReset();
+    tokenManager.isTokenExpired.mockReturnValue(false);
   });
 
   describe('handleAuthStatus', () => {
@@ -121,6 +129,15 @@ describe('Auth Status Command Module', () => {
           }
         }
       });
+      tokenManager.getOrRefreshClientToken.mockResolvedValue({
+        token: 'client-token-123',
+        controller: 'http://localhost:3000'
+      });
+      config.getClientToken.mockResolvedValue({
+        token: 'client-token-123',
+        controller: 'http://localhost:3000',
+        expiresAt: '2024-01-15T10:30:00Z'
+      });
       config.getSecretsEncryptionKey.mockResolvedValue(null);
 
       authApi.getAuthUser.mockResolvedValue({
@@ -172,6 +189,15 @@ describe('Auth Status Command Module', () => {
           }
         }
       });
+      tokenManager.getOrRefreshClientToken.mockResolvedValue({
+        token: 'client-token-123',
+        controller: 'http://localhost:3000'
+      });
+      config.getClientToken.mockResolvedValue({
+        token: 'client-token-123',
+        controller: 'http://localhost:3000',
+        expiresAt: '2024-01-15T10:30:00Z'
+      });
       config.getSecretsEncryptionKey.mockResolvedValue(null);
 
       authApi.getAuthUser.mockResolvedValue({
@@ -203,6 +229,52 @@ describe('Auth Status Command Module', () => {
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Not authenticated'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Token expired'));
+    });
+
+    it('should fall back to client token when device token is rejected', async() => {
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'expired-device-token',
+        controller: 'http://localhost:3000'
+      });
+      config.getConfig.mockResolvedValue({
+        environments: {
+          dev: {
+            clients: {
+              dataplane: {
+                token: 'client-token-456',
+                controller: 'http://localhost:3000',
+                expiresAt: '2099-01-01T00:00:00Z'
+              }
+            }
+          }
+        }
+      });
+      tokenManager.getOrRefreshClientToken.mockResolvedValue({
+        token: 'client-token-456',
+        controller: 'http://localhost:3000'
+      });
+      config.getClientToken.mockResolvedValue({
+        token: 'client-token-456',
+        controller: 'http://localhost:3000',
+        expiresAt: '2099-01-01T00:00:00Z'
+      });
+      config.getSecretsEncryptionKey.mockResolvedValue(null);
+
+      authApi.getAuthUser
+        .mockResolvedValueOnce({
+          success: false,
+          error: 'Permission denied'
+        })
+        .mockResolvedValueOnce({
+          success: true,
+          data: { authenticated: true, user: { email: 'app@example.com' } }
+        });
+
+      await handleAuthStatus({});
+
+      expect(authApi.getAuthUser).toHaveBeenCalledTimes(2);
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Client Token'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Authenticated'));
     });
 
     it('should handle token validation error gracefully', async() => {

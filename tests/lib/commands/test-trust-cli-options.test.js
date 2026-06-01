@@ -8,7 +8,7 @@ describe('test-trust-cli-options', () => {
   it('normalizes flags from rawArgs when Commander omits booleans', () => {
     const opts = normalizeTestTrustCliOptions(
       { env: 'dev' },
-      { rawArgs: ['node', 'aifabrix', 'test-trust', 'hubspot', '-d', '-v', '--revalidate'] }
+      { rawArgs: ['node', 'aifabrix', 'verify-trust', 'hubspot', '-d', '-v', '--revalidate'] }
     );
     expect(opts.debug).toBe(true);
     expect(opts.verbose).toBe(true);

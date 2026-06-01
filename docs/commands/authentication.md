@@ -232,9 +232,27 @@ Display authentication status for the current controller and environment.
 ```bash
 # Check status (uses controller and environment from config.yaml)
 aifabrix auth status
+aifabrix auth status --validate
 ```
 
 Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth --set-controller` / `--set-environment`). There are no `--controller` or `--environment` options.
+
+**Automatic client token refresh:**
+
+When you run `auth status`, the CLI refreshes **expired** application client tokens stored under `environments.<env>.clients.<app>` if client id and secret are available from:
+
+- `~/.aifabrix/secrets.local.yaml` — `<app>-client-idKeyVault` and `<app>-client-secretKeyVault` (for example `dataplane-client-idKeyVault`, `hubspot-e2e-client-idKeyVault`)
+- Environment variables — `MISO_CLIENTID` / `MISO_CLIENTSECRET` (or `CLIENTID` / `CLIENTSECRET`)
+
+Device login tokens still use the refresh token from `aifabrix login` (device flow). If the device refresh token is expired, run `aifabrix login` again.
+
+**Stored application client tokens (logout targets):**
+
+After the main status block, `auth status` lists each app that has a stored client token for the current controller and environment, with:
+
+- Expiration time and valid/expired state
+- A copy-paste command to clear that token: `aifabrix logout -e <env> -a <app>`
+- Hints for clearing all client tokens in the environment (`aifabrix logout -e <env>`) or the device token (`aifabrix logout -c <controller>`)
 
 **Controller URL Resolution:**
 
@@ -507,21 +525,22 @@ Clear authentication tokens from config.yaml.
 
 **What:** Removes stored authentication tokens from `~/.aifabrix/config.yaml`. Supports clearing all tokens or specific tokens based on options (controller, environment, app). Preserves other configuration settings like `developer-id`, `environment`, `secrets-encryption`, etc.
 
-**When:** When you want to log out, switch accounts, or clear expired tokens.
+**When:** When you want to log out, switch accounts, or clear expired or stale application tokens. Use `aifabrix auth status` first to see which apps have stored client tokens and the exact `logout` commands.
 
 **Usage:**
 ```bash
 # Clear all tokens (both device and client tokens)
 aifabrix logout
 
-# Clear device token for specific controller
-aifabrix logout --controller http://localhost:3000
+# Clear device token for specific controller (interactive login session)
+aifabrix logout -c http://localhost:3600
 
 # Clear all client tokens for specific environment
-aifabrix logout --environment dev
+aifabrix logout -e dev
 
-# Clear client token for specific app in environment
-aifabrix logout --environment dev --app myapp
+# Clear one application client token (shown on auth status)
+aifabrix logout -e dev -a hubspot-e2e
+aifabrix logout -e dev -a dataplane
 ```
 
 **Options:**

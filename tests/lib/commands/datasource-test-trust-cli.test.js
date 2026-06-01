@@ -1,5 +1,5 @@
 /**
- * @fileoverview Tests for datasource test-trust CLI finalize path.
+ * @fileoverview Tests for datasource verify-trust CLI finalize path.
  */
 
 jest.mock('../../../lib/utils/logger', () => ({ log: jest.fn() }));
@@ -16,11 +16,11 @@ jest.mock('../../../lib/utils/test-log-writer', () => ({
 const logger = require('../../../lib/utils/logger');
 const { runDatasourceAgentTrust } = require('../../../lib/datasource/agent-trust-run');
 const {
-  finalizeDatasourceTestTrust,
-  runDatasourceTestTrustOnce
+  finalizeDatasourceVerifyTrust,
+  runDatasourceVerifyTrustOnce
 } = require('../../../lib/commands/datasource-test-trust-cli');
 
-describe('datasource-test-trust-cli', () => {
+describe('datasource-verify-trust-cli', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     runDatasourceAgentTrust.mockResolvedValue({
@@ -34,8 +34,8 @@ describe('datasource-test-trust-cli', () => {
     });
   });
 
-  it('runDatasourceTestTrustOnce forwards summary and timeout', async() => {
-    await runDatasourceTestTrustOnce('hubspot-companies', {
+  it('runDatasourceVerifyTrustOnce forwards summary and timeout', async() => {
+    await runDatasourceVerifyTrustOnce('hubspot-companies', {
       app: 'hubspot',
       env: 'dev',
       summary: true,
@@ -47,8 +47,8 @@ describe('datasource-test-trust-cli', () => {
     );
   });
 
-  it('finalizeDatasourceTestTrust prints summary line', async() => {
-    const code = await finalizeDatasourceTestTrust(
+  it('finalizeDatasourceVerifyTrust prints summary line', async() => {
+    const code = await finalizeDatasourceVerifyTrust(
       'hubspot-companies',
       { summary: true },
       {

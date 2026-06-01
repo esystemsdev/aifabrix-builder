@@ -23,6 +23,7 @@
 | `{{systemKey}}-deploy.json` | Deploy manifest (`aifabrix json {{appName}}`) |
 | `deploy.js` | Deploy helper |
 | `wizard.yaml` | Wizard input |
+| `scenarios/*.yaml` | Governance scenario packs (optional; published with `upload`) |
 | `{{rbacOptionalFile}}` | Roles and permissions |
 
 ## Typical workflow
@@ -33,7 +34,8 @@
 4. **Check locally** — `aifabrix validate {{appName}}` and `aifabrix datasource validate` on files you touched.
 5. **Align manifest** — `aifabrix repair {{appName}}` after bigger edits.
 6. **Publish** — see [Publish and credentials](#publish-and-credentials) (`upload`, `deploy`, or `credential push`).
-7. **Protection** (optional) — dimension grants in `integration/.protection/` — see [Protection manifests](#protection-manifests).
+7. **Certify** — run [Enterprise AI Certification](#enterprise-ai-certification) (`verify-operations` → `verify-trust` → `verify-governance` → `lifecycle`).
+8. **Protection** (optional) — dimension grants in `integration/.protection/` — see [Protection manifests](#protection-manifests).
 
 Rollback an experiment: `datasource capability remove …` → validate → upload/deploy again.
 
@@ -108,9 +110,9 @@ af ds cap remove {{#if hasDatasources}}{{datasources.[0].datasourceKey}}{{else}}
 
 For flags, run `af ds cap <command> --help`.
 
-## Single datasource lifecycle (production-ready)
+## Per-datasource debug ladder
 
-Start with one datasource and iterate until it’s stable.
+Start with one datasource and iterate until it’s stable (architect / CI — use [Enterprise AI Certification](#enterprise-ai-certification) for the product path).
 
 ```bash
 af ds validate {{#if hasDatasources}}{{datasources.[0].datasourceKey}}{{else}}<datasource-key>{{/if}}
@@ -142,7 +144,55 @@ aifabrix repair {{appName}}
 
 Useful flags: `--dry-run`, `--auth <method>`, `--rbac`, `--expose`, `--sync`, `--test`.
 
-## Validate and test
+## Enterprise AI Certification
+
+Product-facing commands that prove operational readiness, AI trust, governance enforcement, and an **Enterprise AI Certification** report. Run after [publish](#publish-and-credentials).
+
+| Command | What it proves |
+| --- | --- |
+| `aifabrix verify-operations {{appName}}` | Operational readiness — orchestrates validate, unit test, integration, and E2E for the whole system |
+| `aifabrix verify-trust {{appName}}` | AI business context confidence (semantic agent metadata; not live vendor API calls) |
+| `aifabrix verify-governance {{appName}}` | Policy coverage and ABAC enforcement scenarios (governed search key sets) |
+| `aifabrix lifecycle {{appName}}` | Certification report from persisted pillar results on the dataplane |
+
+**Recommended order:** `upload` → `verify-operations` → `verify-trust` → `verify-governance` → `lifecycle`
+
+Governance packs live under `integration/{{appName}}/scenarios/` (YAML). `aifabrix upload {{appName}}` publishes them to the dataplane; `verify-governance` uses those persisted packs by default (`--pack` is for authoring overrides only).
+
+```bash
+aifabrix upload {{appName}}
+
+aifabrix verify-operations {{appName}}
+aifabrix verify-operations {{appName}} -v
+
+aifabrix verify-trust {{appName}} -v
+aifabrix verify-trust {{appName}} --no-sync --revalidate
+
+aifabrix verify-governance {{appName}} -v
+aifabrix verify-governance {{appName}} --no-sync
+
+# Report only (GET persisted results)
+aifabrix lifecycle {{appName}}
+aifabrix lifecycle {{appName}} -v
+
+# Run missing verify steps, publish local files, then print report
+aifabrix lifecycle {{appName}} --run
+aifabrix lifecycle {{appName}} --run --no-sync
+```
+
+**Prerequisites:** `aifabrix login`, dataplane reachable, config published (`upload`). Governance also needs identity sync, protection upload, fixture load, and `governance:evaluate` on your token — see your scenario pack README or platform docs.
+
+**Single-datasource trust** (same semantic check as system `verify-trust`, one key):
+
+```bash
+aifabrix datasource verify-trust {{#if hasDatasources}}{{datasources.[0].datasourceKey}}{{else}}<datasource-key>{{/if}} --app {{appName}} -v
+```
+
+Common flags: `-v` / `--verbose`, `-d` / `--debug` (trust), `--no-sync` (skip pre-run upload), `--json` (machine-readable envelope).
+
+## Debug and low-level tests
+
+Advanced commands for architects and CI. Prefer [Enterprise AI Certification](#enterprise-ai-certification) for integrator proof unless you need step-by-step debugging.
 
 | Command | Network | Notes |
 | --- | --- | --- |
@@ -150,17 +200,11 @@ Useful flags: `--dry-run`, `--auth <method>`, `--rbac`, `--expose`, `--sync`, `-
 | `aifabrix test {{appName}}` | Off | Local checks |
 | `aifabrix test-integration {{appName}}` | On | Needs login + dataplane |
 | `aifabrix test-e2e {{appName}}` | On | E2E for every datasource; uploads local files first unless `--no-sync` |
-| `aifabrix test-trust {{appName}}` | On | Semantic agent metadata trust (not live API E2E); uploads first unless `--no-sync` |
-| `aifabrix test-governance {{appName}}` | On | ABAC visibility acceptance (scenario packs); uploads first unless `--no-sync` |
 
 System-level tests publish local integration files before the run (same path as `upload`). Use **`--no-sync`** to validate against config already on the dataplane.
 
 ```bash
-aifabrix test-trust {{appName}}
-aifabrix test-trust {{appName}} --no-sync
-aifabrix test-e2e {{appName}} --no-sync
-aifabrix test-governance {{appName}}
-aifabrix test-governance {{appName}} --no-sync --verbose
+aifabrix test-e2e {{appName}} --no-sync -d
 ```
 
 Single datasource E2E:
@@ -179,14 +223,9 @@ aifabrix datasource test-e2e <datasource-key> --app {{appName}}
 ```
 {{/if}}
 
-Common flags: `-v` / `--verbose`, `-d` / `--debug`, `--no-async` (datasource E2E only), `--no-sync` (skip pre-run upload on system `test-e2e` / `test-trust`).
+Common flags: `-v` / `--verbose`, `-d` / `--debug`, `--no-async` (datasource E2E only), `--no-sync` (skip pre-run upload on system `test-e2e`).
 
-Datasource trust (one key; uploads before run unless `--no-sync`):
-
-```bash
-aifabrix datasource test-trust {{#if hasDatasources}}{{datasources.[0].datasourceKey}}{{else}}<datasource-key>{{/if}} --app {{appName}}
-aifabrix datasource test-trust {{#if hasDatasources}}{{datasources.[0].datasourceKey}}{{else}}<datasource-key>{{/if}} --app {{appName}} --no-sync --revalidate
-```
+Debug logs (when using `--debug` on datasource commands) are written under `integration/{{appName}}/logs/` — use `aifabrix datasource log-test`, `log-integration`, `log-e2e`, or `log-trust` to inspect the latest file for each type.
 
 ## Deploy
 
@@ -204,5 +243,6 @@ aifabrix delete {{appName}}
 
 - **Validation errors** — Fix JSON/schema issues; run `aifabrix validate {{appName}}` and `aifabrix datasource validate` on the file you changed.
 - **Deploy blocked by schema changes** — When the interface changed and deploy rejects the update, validate locally then `aifabrix upload {{appName}} --force` to publish for dev iteration (see [Publish and credentials](#publish-and-credentials)).
-- **Auth** — `aifabrix auth config` + `aifabrix login` before upload, deploy, or remote tests.
+- **Auth** — `aifabrix auth config` + `aifabrix login` before upload, deploy, remote tests, or certification.
+- **Certification gaps** — Run pillars in order (`verify-operations` → `verify-trust` → `verify-governance`), then `aifabrix lifecycle {{appName}} -v` for per-datasource breakdown; use `lifecycle --run` to execute missing steps and refresh the report.
 - **Wrong folder** — Run CLI from the project root (where `integration/{{appName}}/` lives).

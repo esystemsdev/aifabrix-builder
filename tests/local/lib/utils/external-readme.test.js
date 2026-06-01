@@ -342,10 +342,25 @@ describe('external-readme', () => {
         appName: 'myext',
         datasources: []
       });
-      expect(out).toContain('## Validate and test');
+      expect(out).toContain('## Debug and low-level tests');
       expect(out).toContain('| Command | Network |');
       expect(out).toContain('Off — schemas and files only');
       expect(out).toContain('On — needs login + dataplane');
+    });
+
+    it('documents Enterprise AI Certification including lifecycle', () => {
+      const out = generateExternalReadmeContent({
+        systemKey: 'myext',
+        appName: 'myext',
+        datasources: []
+      });
+      expect(out).toContain('## Enterprise AI Certification');
+      expect(out).toContain('aifabrix verify-operations myext');
+      expect(out).toContain('aifabrix verify-trust myext');
+      expect(out).toContain('aifabrix verify-governance myext');
+      expect(out).toContain('aifabrix lifecycle myext');
+      expect(out).toContain('aifabrix lifecycle myext --run');
+      expect(out).toContain('scenarios/*.yaml');
     });
 
     it('includes test, test-integration, and test-e2e commands', () => {
@@ -392,13 +407,13 @@ describe('external-readme', () => {
       expect(out).toContain('aifabrix upload ');
     });
 
-    it('documents test-governance and upload --force for blocked deploys', () => {
+    it('documents verify-governance and upload --force for blocked deploys', () => {
       const out = generateExternalReadmeContent({
         systemKey: 'myext',
         appName: 'myext',
         datasources: []
       });
-      expect(out).toContain('aifabrix test-governance myext');
+      expect(out).toContain('aifabrix verify-governance myext');
       expect(out).toContain('aifabrix upload myext --force');
       expect(out).toContain('Deploy blocked by schema changes');
     });

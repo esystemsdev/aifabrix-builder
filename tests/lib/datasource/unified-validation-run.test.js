@@ -79,7 +79,12 @@ describe('unified-validation-run', () => {
 
     expect(requireBearerForDataplanePipeline).toHaveBeenCalledWith({ token: 't' });
     expect(uploadExternalSystem).toHaveBeenCalledTimes(1);
-    expect(uploadExternalSystem).toHaveBeenCalledWith('sys-one', { minimal: true, verbose: false });
+    expect(uploadExternalSystem).toHaveBeenCalledWith('sys-one', {
+      minimal: true,
+      verbose: false,
+      silentResolve: true,
+      syncMode: true
+    });
     expect(postValidationRunAndOptionalPoll).toHaveBeenCalled();
   });
 
@@ -96,7 +101,9 @@ describe('unified-validation-run', () => {
 
     expect(uploadExternalSystem).toHaveBeenCalledWith('sys-one', {
       minimal: true,
-      verbose: true,
+      verbose: false,
+      silentResolve: true,
+      syncMode: true,
       force: true
     });
   });

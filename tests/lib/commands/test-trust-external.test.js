@@ -15,9 +15,13 @@ jest.mock('../../../lib/commands/upload', () => ({
 jest.mock('../../../lib/datasource/agent-trust-run', () => ({
   runDatasourceAgentTrust: jest.fn()
 }));
-jest.mock('../../../lib/commands/test-e2e-external', () => ({
-  resolveExternalIntegrationContext: jest.fn()
-}));
+jest.mock('../../../lib/commands/test-e2e-external', () => {
+  const actual = jest.requireActual('../../../lib/commands/test-e2e-external');
+  return {
+    ...actual,
+    resolveExternalIntegrationContext: jest.fn()
+  };
+});
 jest.mock('../../../lib/external-system/test-auth', () => ({
   setupIntegrationTestAuth: jest.fn().mockResolvedValue({
     authConfig: { type: 'bearer', token: 't' },
@@ -58,7 +62,9 @@ describe('test-trust-external', () => {
 
     expect(uploadExternalSystem).toHaveBeenCalledWith('hubspot-demo', {
       minimal: true,
-      verbose: false
+      verbose: false,
+      silentResolve: true,
+      syncMode: true
     });
     const { setupIntegrationTestAuth } = require('../../../lib/external-system/test-auth');
     expect(setupIntegrationTestAuth).not.toHaveBeenCalled();

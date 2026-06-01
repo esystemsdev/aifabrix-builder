@@ -72,15 +72,16 @@ describe('external-readme template (manual)', () => {
       expect(content).not.toContain('aifabrix secret set');
     });
 
-    it('generated README documents test-governance and upload --force', () => {
+    it('generated README documents verify-governance and upload --force', () => {
       const content = generateExternalReadmeContent({
         systemKey: 'gov-demo',
         appName: 'gov-demo',
         displayName: 'Gov Demo',
         datasources: []
       });
-      expect(content).toContain('aifabrix test-governance gov-demo');
+      expect(content).toContain('aifabrix verify-governance gov-demo');
       expect(content).toContain('aifabrix upload gov-demo --force');
+      expect(content).toContain('aifabrix lifecycle gov-demo');
     });
   });
 });

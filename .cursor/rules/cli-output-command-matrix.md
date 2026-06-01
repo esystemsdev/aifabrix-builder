@@ -60,8 +60,10 @@ Third column documents **which on-disk trees** a command is expected to use for 
 | aifabrix test | stream-logs | local+docker | 141 |
 | aifabrix install | stream-logs | local+docker | 141 |
 | aifabrix test-e2e | layout-blocks | local+online | int |
-| aifabrix test-trust | layout-blocks | local+online | int |
-| aifabrix test-governance | layout-blocks | local+online | int |
+| aifabrix verify-operations | layout-blocks + json-opt | local+online | int |
+| aifabrix verify-trust | layout-blocks + json-opt | local+online | int |
+| aifabrix verify-governance | layout-blocks + json-opt | local+online | int |
+| aifabrix lifecycle | layout-blocks + json-opt | local+online | int |
 | aifabrix lint | stream-logs | local | — |
 | aifabrix download | tty-summary | local+online | int |
 | aifabrix upload | tty-summary | local+online | int |
@@ -102,7 +104,7 @@ Third column documents **which on-disk trees** a command is expected to use for 
 | aifabrix datasource test-integration | layout-blocks | local+online | int |
 | aifabrix datasource test-e2e | layout-blocks | local+online | int |
 | aifabrix datasource verify-audit | layout-blocks | local+online | int |
-| aifabrix datasource test-trust | layout-blocks | local+online | int |
+| aifabrix datasource verify-trust | layout-blocks | local+online | int |
 | aifabrix datasource load | layout-blocks + json-opt | local+online | int |
 | aifabrix datasource export | layout-blocks + json-opt | local+online | int |
 | aifabrix datasource log-test | tty-summary | local | int |
@@ -177,7 +179,7 @@ _**validate** (human TTY): `lib/validation/validate-display.js` + `lib/utils/cli
 
 _Certification-related flags (output profile unchanged): `validate --cert-sync`; `show` / `app show --verify-cert`; `datasource test|test-integration|test-e2e` and `test-integration` / `test-e2e` with `--no-cert-sync`._
 
-_**Datasource log-\*** (local, no dataplane): `log-test` → `test-*.json`; `log-integration` → `test-integration-*.json`; `log-e2e` → `test-e2e-*.json`; `log-trust` → `test-trust-*.json` (from matching `test-*` command with `--debug`). **`clean-logs`** deletes those files (`--type` filter, `--dry-run`, `--all`)._
+_**Datasource log-\*** (local, no dataplane): `log-test` → `test-*.json`; `log-integration` → `test-integration-*.json`; `log-e2e` → `test-e2e-*.json`; `log-trust` → `verify-trust-*.json` (from `verify-trust --debug`; log filename prefix unchanged). **`clean-logs`** deletes those files (`--type` filter, `--dry-run`, `--all`)._
 
 _Generated for adoption tracking; see `.cursor/plans/Done/129-cli_layout_adoption.plan.md` and [layout.md](./layout.md)._
 

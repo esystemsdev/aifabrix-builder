@@ -60,9 +60,9 @@ describe('runLogViewer (structural / test)', () => {
     ).rejects.toThrow(/invalid json/i);
   });
 
-  it('formats agent trust log when logType is test-trust', async() => {
+  it('formats agent trust log when logType is verify-trust', async() => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'logv-trust-'));
-    const trustFile = path.join(dir, 'test-trust-hubspot-users-2026.json');
+    const trustFile = path.join(dir, 'verify-trust-hubspot-users-2026.json');
     fs.writeFileSync(
       trustFile,
       JSON.stringify({
@@ -79,7 +79,7 @@ describe('runLogViewer (structural / test)', () => {
       }),
       'utf8'
     );
-    await runLogViewer('ignored', { file: trustFile, logType: 'test-trust' });
+    await runLogViewer('ignored', { file: trustFile, logType: 'verify-trust' });
     const joined = logger.log.mock.calls.map(c => String(c[0] ?? '')).join('\n');
     expect(joined).toContain('Agent trust log');
     expect(joined).toContain('hubspot-users');

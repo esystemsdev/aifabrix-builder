@@ -13,6 +13,7 @@ Commands for creating, testing, and managing **external system integrations**.
 ## Pages
 
 - [External system lifecycle commands](external-integration/system-lifecycle.md) – wizard, download, upload, delete, test, test-integration, credential helpers
+- [Enterprise AI Certification](enterprise-ai-certification.md) – `verify-operations`, `verify-trust`, `verify-governance`, `lifecycle`
 - [Datasource commands](external-integration/datasources.md) – `aifabrix datasource …` (validate/list/diff/upload/test/logs, capability helpers)
 - [Datasource capability commands](external-integration/datasource-capabilities.md) – edit one capability inside a datasource (copy/create/remove/diff/edit/validate/relate)
 

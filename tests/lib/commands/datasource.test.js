@@ -298,7 +298,7 @@ describe('Datasource Commands Module', () => {
       expect(logTrust.command.option).toHaveBeenCalledWith('-f, --file <path>', expect.any(String));
     });
 
-    it('log-trust action calls runLogViewer with logType test-trust', async() => {
+    it('log-trust action calls runLogViewer with logType verify-trust', async() => {
       setupDatasourceCommands(program);
       const datasourceGroup = program._datasourceGroup;
       const logTrust = datasourceGroup._subCommands?.find(c => c.name === 'log-trust <datasourceKey>');
@@ -309,7 +309,7 @@ describe('Datasource Commands Module', () => {
         expect.objectContaining({
           app: 'hubspot',
           file: '/tmp/trust-log.json',
-          logType: 'test-trust'
+          logType: 'verify-trust'
         })
       );
     });

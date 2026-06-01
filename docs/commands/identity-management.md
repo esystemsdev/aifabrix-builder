@@ -27,7 +27,7 @@ All examples below use **your** paths (`integration/<systemKey>/fixtures/...`) a
 | **Controller cache** | In-memory permission/role cache on the controller. **`identity cache clear`** wipes it platform-wide. Use after membership changes if RBAC looks stale. |
 | **Dataplane sync** | Pushes controller identity into the dataplane so protection projection and governance subjects resolve. |
 
-**Not covered:** direct dataplane database edits, protection grant purge, or logging in as scenario subject users ([`test-governance`](governance-testing.md) uses the operator token).
+**Not covered:** direct dataplane database edits, protection grant purge, or logging in as scenario subject users ([`verify-governance`](governance-testing.md) uses the operator token).
 
 ---
 
@@ -201,10 +201,10 @@ Use this order when your integration includes protection manifests and governanc
 1. `aifabrix auth status`
 2. Create subjects: `identity group create`, `identity user create`, `identity membership add` for each **subject user id** in your scenario pack—or bulk-load with `identity apply --file integration/<systemKey>/fixtures/users.csv` and `--filter-prefix` matching CSV `Id` values
 3. `identity cache clear` (or `--purge-cache` on apply/sync) and `identity sync -e <env>`
-4. **Checkpoint:** `identity user groups <email>`; optionally `test-governance <systemKey> --scenario <id> --no-sync -v`
+4. **Checkpoint:** `identity user groups <email>`; optionally `verify-governance <systemKey> --scenario <id> --no-sync -v`
 5. `aifabrix upload <systemKey>` (or your usual publish flow)
 6. `aifabrix protection upload <datasourceKey>` then `aifabrix datasource load <datasourceKey>` — see [Protection](protection.md)
-7. `aifabrix test-governance <systemKey>` — see [Governance testing](governance-testing.md)
+7. `aifabrix verify-governance <systemKey>` — see [Governance testing](governance-testing.md)
 
 **Two-pass proof (optional):** Run step 2 with granular CLI commands first, checkpoint, then repeat with `identity apply` on the same CSV and confirm idempotent results (`0 created`, memberships skipped) before steps 5–7.
 
@@ -242,7 +242,7 @@ Use this order when your integration includes protection manifests and governanc
 
 ## See also
 
-- [Governance testing](governance-testing.md) — Scenario packs and `test-governance`
+- [Governance testing](governance-testing.md) — Scenario packs and `verify-governance`
 - [Protection](protection.md) — Manifests before governed data load
 - [External integration testing](external-integration-testing.md) — `datasource load`, E2E, audit verification
 - [External Integration Commands](external-integration.md) — Upload and publish

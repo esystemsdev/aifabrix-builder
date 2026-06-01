@@ -11,6 +11,15 @@ const {
 } = require('../../../lib/utils/agent-trust-wait-ui');
 
 describe('agent-trust-wait-ui', () => {
+  const originalIsTTY = process.stdout.isTTY;
+
+  afterEach(() => {
+    Object.defineProperty(process.stdout, 'isTTY', {
+      value: originalIsTTY,
+      configurable: true
+    });
+  });
+
   it('buildAgentTrustWaitSpinnerText includes datasource key and budget', () => {
     const deadlineMs = Date.now() + 90000;
     const t = buildAgentTrustWaitSpinnerText('hubspot-companies', deadlineMs);
@@ -20,17 +29,12 @@ describe('agent-trust-wait-ui', () => {
   });
 
   it('runWithAgentTrustWaitSpinner invokes work on non-TTY without ora', async() => {
-    const prev = process.stdout.isTTY;
-    process.stdout.isTTY = false;
-    try {
-      const out = await runWithAgentTrustWaitSpinner(async() => 'done', {
-        datasourceKey: 'x',
-        timeoutMs: 5000
-      });
-      expect(out).toBe('done');
-      expect(shouldUseAgentTrustWaitSpinner()).toBe(false);
-    } finally {
-      process.stdout.isTTY = prev;
-    }
+    Object.defineProperty(process.stdout, 'isTTY', { value: false, configurable: true });
+    const out = await runWithAgentTrustWaitSpinner(async() => 'done', {
+      datasourceKey: 'x',
+      timeoutMs: 5000
+    });
+    expect(out).toBe('done');
+    expect(shouldUseAgentTrustWaitSpinner()).toBe(false);
   });
 });

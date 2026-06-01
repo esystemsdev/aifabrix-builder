@@ -357,7 +357,7 @@ All Controller and Dataplane app endpoints accept **token-only** auth: **user to
 
 **CI/CD deployment auth (`AIFABRIX_DEPLOYMENT_AUTH`):**
 
-For pipeline publish and dataplane validation commands (`upload`, `test-integration`, `test-e2e`, `test-trust`, protection upload, and related paths), the CLI chooses how to authenticate using **`AIFABRIX_DEPLOYMENT_AUTH`** (or per-call `deploymentAuth` in code):
+For pipeline publish and dataplane validation commands (`upload`, `test-integration`, `test-e2e`, `verify-trust`, protection upload, and related paths), the CLI chooses how to authenticate using **`AIFABRIX_DEPLOYMENT_AUTH`** (or per-call `deploymentAuth` in code):
 
 | Value | Behavior |
 | ------- | ---------- |

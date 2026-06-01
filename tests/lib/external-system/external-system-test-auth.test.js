@@ -74,7 +74,8 @@ describe('External System Test Authentication Module', () => {
       expect(resolveDataplaneUrl).toHaveBeenCalledWith(
         'https://controller.example.com',
         'dev',
-        mockAuthConfig
+        mockAuthConfig,
+        { silent: false }
       );
       expect(result).toEqual({
         authConfig: mockAuthConfig,
@@ -143,7 +144,8 @@ describe('External System Test Authentication Module', () => {
       expect(resolveDataplaneUrl).toHaveBeenCalledWith(
         'https://custom-controller.example.com',
         'tst',
-        mockAuthConfig
+        mockAuthConfig,
+        { silent: false }
       );
     });
 
@@ -177,7 +179,8 @@ describe('External System Test Authentication Module', () => {
       expect(resolveDataplaneUrl).toHaveBeenCalledWith(
         'https://config-controller.example.com',
         'pro',
-        mockAuthConfig
+        mockAuthConfig,
+        { silent: false }
       );
     });
 
@@ -212,7 +215,8 @@ describe('External System Test Authentication Module', () => {
       expect(resolveDataplaneUrl).toHaveBeenCalledWith(
         'http://localhost:3000',
         'dev',
-        mockAuthConfig
+        mockAuthConfig,
+        { silent: false }
       );
     });
 
@@ -286,7 +290,8 @@ describe('External System Test Authentication Module', () => {
       expect(resolveDataplaneUrl).toHaveBeenCalledWith(
         'https://controller.example.com',
         'dev',
-        mockAuthConfig
+        mockAuthConfig,
+        { silent: false }
       );
     });
 
@@ -378,6 +383,24 @@ describe('External System Test Authentication Module', () => {
 
       expect(result.authConfig).toEqual(mockAuthConfig);
       expect(result.dataplaneUrl).toBe('http://127.0.0.1:3611');
+      expect(resolveDataplaneUrl).not.toHaveBeenCalled();
+    });
+
+    it('should reuse authConfig and dataplaneUrl from options without discovery', async() => {
+      const appName = 'hubspot-test';
+      const mockAuthConfig = { token: 'cached-token' };
+      const options = {
+        authConfig: mockAuthConfig,
+        dataplaneUrl: 'http://localhost:3611'
+      };
+
+      const result = await setupIntegrationTestAuth(appName, options, {});
+
+      expect(result).toEqual({
+        authConfig: mockAuthConfig,
+        dataplaneUrl: 'http://localhost:3611'
+      });
+      expect(getDeploymentAuth).not.toHaveBeenCalled();
       expect(resolveDataplaneUrl).not.toHaveBeenCalled();
     });
   });

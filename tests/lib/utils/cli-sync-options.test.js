@@ -17,7 +17,7 @@ describe('cli-sync-options', () => {
   });
 
   it('detects --no-sync in rawArgs', () => {
-    expect(cliOptsSkipSync({}, { rawArgs: ['node', 'aifabrix', 'test-trust', 'app', '--no-sync'] })).toBe(
+    expect(cliOptsSkipSync({}, { rawArgs: ['node', 'aifabrix', 'verify-trust', 'app', '--no-sync'] })).toBe(
       true
     );
   });

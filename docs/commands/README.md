@@ -69,7 +69,11 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix test <app> [--env dev|tst]`](application-development.md#aifabrix-test-app) - Tests: builder in container; external = local validation
   - [`aifabrix install <app> [--env dev|tst]`](application-development.md#aifabrix-install-app) - Install deps in container (builder apps only)
   - [`aifabrix test-e2e <app> [--env dev|tst]`](application-development.md#aifabrix-test-e2e-app) - E2E: builder in container; external = all datasources via dataplane
-  - [`aifabrix test-governance <systemKey>`](governance-testing.md) - Governance scenario acceptance: ABAC visibility (key sets only; not test-e2e)
+  - [Enterprise AI Certification](enterprise-ai-certification.md) - `verify-operations`, `verify-trust`, `verify-governance`, `lifecycle`
+    - [`aifabrix verify-operations <systemKey>`](enterprise-ai-certification.md#aifabrix-verify-operations-systemkey) - Operational readiness (validate → test → integration → E2E)
+    - [`aifabrix verify-trust <systemKey>`](enterprise-ai-certification.md#aifabrix-verify-trust-systemkey) - Agent business metadata trust
+    - [`aifabrix verify-governance <systemKey>`](governance-testing.md) - Governance scenario acceptance (ABAC visibility)
+    - [`aifabrix lifecycle <systemKey>`](enterprise-ai-certification.md#aifabrix-lifecycle-systemkey) - Certification report (`--run` to fill gaps)
   - [`aifabrix test-integration <app> [--env dev|tst]`](application-development.md#aifabrix-test-integration-app) - Integration tests: builder in container; external via dataplane
   - [`aifabrix lint <app> [--env dev|tst]`](application-development.md#aifabrix-lint-app) - Lint in container (builder apps only)
   - [`aifabrix restart <app>`](application-development.md#aifabrix-restart-app) - Restart a running Docker application (`builder/<appKey>`)
@@ -95,6 +99,7 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix diff <file1> <file2>`](validation.md#aifabrix-diff-file1-file2) - Diff two config files (optional schema validate)
 
 ### External Integration
+- [Enterprise AI Certification](enterprise-ai-certification.md) - `verify-operations`, `verify-trust`, `verify-governance`, `lifecycle` (recommended certification ladder)
 - [Certification and trust (CLI)](certification-and-trust.md) - Local `certification` section sync, `--no-cert-sync`, `--verify-cert`, `validate --cert-sync`
 - [External Integration Commands](external-integration.md) - External system integration. See [External Integration Testing](external-integration-testing.md) for unit/integration test details and payloads.
   - [External system lifecycle commands](external-integration/system-lifecycle.md) - Wizard, download, upload, delete, and system-level tests
@@ -115,7 +120,7 @@ Complete command reference organized by concept with examples and troubleshootin
     - [`aifabrix datasource test-e2e <datasourceKey>`](external-integration/datasources.md#aifabrix-datasource-test-e2e-datasourcekey) - E2E validation run for one datasource (unified dataplane API)
     - [`aifabrix datasource verify-audit <datasourceKey>`](external-integration-testing.md#audit-evidence-verification-aifabrix-datasource-verify-audit) - Re-check audit evidence matrix from latest E2E log
     - [`aifabrix datasource log-test <datasourceKey>`](external-integration/datasources.md#aifabrix-datasource-log-test-datasourcekey) - Show latest structural validation debug log (`test-*.json`)
-    - [`aifabrix datasource log-trust <datasourceKey>`](external-integration/datasources.md#aifabrix-datasource-log-trust-datasourcekey) - Show latest agent trust debug log (`test-trust-*.json`)
+    - [`aifabrix datasource log-trust <datasourceKey>`](external-integration/datasources.md#aifabrix-datasource-log-trust-datasourcekey) - Show latest agent trust debug log (`verify-trust-*.json`)
     - [`aifabrix datasource clean-logs`](external-integration/datasources.md#aifabrix-datasource-clean-logs) - Remove saved debug JSON under `integration/<systemKey>/logs/`
 
 ### Utilities

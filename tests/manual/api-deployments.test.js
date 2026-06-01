@@ -8,6 +8,10 @@
  */
 
 const { getManualTestAuth } = require('./require-auth');
+const {
+  applicationItemsFromListResponse,
+  applicationKeyFromListItem
+} = require('./list-app-key');
 const { listDeployments, listApplicationDeployments, getDeployment, getDeploymentLogs } = require('../../lib/api/deployments.api');
 const { listEnvironmentApplications } = require('../../lib/api/environments.api');
 
@@ -38,15 +42,14 @@ describe('Manual API tests – deployments.api (real Controller)', () => {
     }
 
     // This endpoint is environment-scoped; appKey must exist in the environment.
-    const listRes = await listEnvironmentApplications(controllerUrl, environment, authConfig, { pageSize: 1 });
+    const listRes = await listEnvironmentApplications(controllerUrl, environment, authConfig, {
+      pageSize: 20
+    });
     if (!listRes?.success) {
       return;
     }
-    const items = Array.isArray(listRes.data) ? listRes.data : (listRes.data?.items ?? listRes.data?.data ?? []);
-    if (items.length === 0) {
-      return;
-    }
-    const appKey = items[0].key ?? items[0].appKey ?? items[0].id;
+    const items = applicationItemsFromListResponse(listRes);
+    const appKey = items.map(applicationKeyFromListItem).find(Boolean);
     if (!appKey) {
       return;
     }

@@ -47,6 +47,7 @@ Use **`--no-cert-sync`** on commands that support it when you **do not** want th
 
 ## Related topics
 
+- [Enterprise AI Certification](enterprise-ai-certification.md) — `verify-operations`, `verify-trust`, `verify-governance`, `lifecycle`.
 - [External Integration Commands](external-integration.md) — upload, download, deploy.
 - [External Integration Testing](external-integration-testing.md) — datasource tests, **`--require-cert`**, watch modes.
 - [Validation Commands](validation.md) — `validate` and **`--cert-sync`** for external integrations.

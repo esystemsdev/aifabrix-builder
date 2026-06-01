@@ -13,8 +13,17 @@ Testing external integrations happens in several layers:
 1. **Unit tests** (`aifabrix test <app>`) – Local validation with no API calls. Validates syntax, schemas, field mappings, metadata schemas, and relationships using test payloads from the datasource configuration.
 2. **Integration tests** (`aifabrix test-integration <app>`) – For an external system folder, calls the dataplane for an **app-wide** integration rollup (small CLI surface: environment, verbosity, debug). Per-datasource payloads, timeouts, and machine modes live on **`aifabrix datasource test-integration <datasourceKey>`**. Validates field mappings, metadata schemas, endpoint connectivity, and ABAC dimensions as returned by the dataplane for that flow.
 3. **End-to-end (E2E) tests** (`aifabrix datasource test-e2e <datasourceKey>`) – Full flow against real external systems: config validation, credential connectivity, sync execution, data persistence, and CIP simulation. Uses real credentials and real external APIs (e.g. HubSpot, SharePoint).
-4. **Semantic trust** (`aifabrix test-trust <systemKey>` / `aifabrix datasource test-trust <datasourceKey>`) – Dataplane review of **business metadata** for AI agents (semantic fit, warnings, publish gate). Does **not** call external APIs or run CIP; use after local `test` and before or alongside E2E when you need trust evidence separate from connectivity.
-5. **Governance acceptance** ([`aifabrix test-governance <systemKey>`](governance-testing.md)) – Prove **ABAC visibility** per subject user (sync record keys only). Does **not** call vendor APIs and is **not** `test-e2e`. Requires baseline fixture load, identity sync, and `governance:evaluate` (see [Governance testing](governance-testing.md) and [Identity management](identity-management.md)).
+4. **Semantic trust** (`aifabrix verify-trust <systemKey>` / deprecated `verify-trust`; `aifabrix datasource verify-trust <datasourceKey>`) – Dataplane review of **business metadata** for AI agents (semantic fit, warnings, publish gate). Does **not** call external APIs or run CIP; use after local `test` and before or alongside E2E when you need trust evidence separate from connectivity.
+5. **Governance acceptance** ([`aifabrix verify-governance <systemKey>`](governance-testing.md); alias `verify-governance`) – Prove **ABAC visibility** per subject user (sync record keys only). Default path uses scenario packs stored on the dataplane after `aifabrix upload`. Does **not** call vendor APIs and is **not** `test-e2e`. Requires baseline fixture load, identity sync, and `governance:evaluate` (see [Governance testing](governance-testing.md) and [Identity management](identity-management.md)).
+6. **Enterprise AI Certification** – Product-facing verify commands and executive report ([full reference](enterprise-ai-certification.md)):
+   - **`aifabrix verify-operations <systemKey>`** – Operational readiness (validate → test → test-integration → test-e2e). Flags: `-v`, `-d`, `--no-sync`, `--force`, `--json`.
+   - **`aifabrix verify-trust <systemKey>`** – AI business context confidence. Flags: `-v`, `-d`, `--no-sync`, `--revalidate`, `--json`.
+   - **`aifabrix verify-governance <systemKey>`** – Policy coverage and enforcement scenarios. Flags: `-v`, `--no-sync`, `--pack` (authoring override).
+   - **`aifabrix lifecycle <systemKey>`** – Certification report (GET by default; **`--run`** to fill gaps). Flags: `-v`, `-d`, `--run`, `--no-sync`, `--force`, `--json`.
+
+**Recommended certification order:** `upload` → `verify-operations` → `verify-trust` → `verify-governance` → `lifecycle`
+
+**Advanced / debugging:** `validate`, `test`, `test-integration`, `test-e2e`, and per-datasource commands remain available for architects.
 
 **Dataplane datasource validation (single key):** `aifabrix datasource test <datasourceKey>` runs the unified validation API with run type **test** (structural/policy on the dataplane). `aifabrix datasource test-integration` uses run type **integration** (richer integration checks). Both use the same deployment auth as `datasource test-e2e`. See [External Integration Commands – datasource test](external-integration.md#aifabrix-datasource-test-datasourcekey).
 
@@ -35,7 +44,7 @@ Testing external integrations happens in several layers:
 <a id="debug-output-datasource-commands"></a>
 ### Debug output (`datasource` commands)
 
-For **`aifabrix datasource test`**, **`datasource test-integration`**, **`datasource test-e2e`**, and **`datasource test-trust`**, debug logging can write JSON under **`integration/<systemKey>/logs/`** (prefixes **`test-`**, **`test-integration-`**, **`test-e2e-`**, **`test-trust-`** respectively). Use **`datasource log-test`**, **`log-integration`**, **`log-e2e`**, or **`log-trust`** to print the latest matching log (each command only opens its own prefix; structural **`log-test`** ignores `test-e2e-`, `test-integration-`, and `test-trust-` files). Use **`aifabrix datasource clean-logs`** (`--app` or `--all`, optional `--type`, `--dry-run`) to remove saved debug files locally.
+For **`aifabrix datasource test`**, **`datasource test-integration`**, **`datasource test-e2e`**, and **`datasource verify-trust`**, debug logging can write JSON under **`integration/<systemKey>/logs/`** (prefixes **`test-`**, **`test-integration-`**, **`test-e2e-`**, **`verify-trust-`** respectively). Use **`datasource log-test`**, **`log-integration`**, **`log-e2e`**, or **`log-trust`** to print the latest matching log (each command only opens its own prefix; structural **`log-test`** ignores `test-e2e-`, `test-integration-`, and `verify-trust-` files). Use **`aifabrix datasource clean-logs`** (`--app` or `--all`, optional `--type`, `--dry-run`) to remove saved debug files locally.
 
 For **`aifabrix datasource test`**, **`datasource test-integration`**, and **`datasource test-e2e`**, **`--debug`** accepts an optional **level**: **`summary`** (default when you pass `--debug` alone), **`full`**, or **`raw`**. The dataplane returns richer debug in the run result; the CLI prints an extra appendix after the normal human output (truncation, line caps, and basic redaction on **`raw`**). All three commands also write a timestamped JSON file under **`integration/<systemKey>/logs/`**—filename prefixes are **`test-`**, **`test-integration-`**, and **`test-e2e-`** respectively. Use **`aifabrix datasource log-test`** to open the latest structural **`test-*.json`** (see [External Integration Commands](external-integration.md#aifabrix-datasource-log-test-datasourcekey)). If you use **`--json`**, stdout is only the raw report JSON—no debug appendix.
 
@@ -319,9 +328,9 @@ After E2E or manual seeding, use **`aifabrix datasource load`** and **`aifabrix 
 
 ---
 
-## Semantic trust (`aifabrix test-trust`)
+## Semantic trust (`aifabrix verify-trust`)
 
-<a id="semantic-trust-aifabrix-test-trust"></a>
+<a id="semantic-trust-aifabrix-verify-trust"></a>
 
 ### What this layer checks
 
@@ -332,7 +341,7 @@ Semantic trust answers whether **business metadata** on the dataplane is fit for
 | Local structure | `aifabrix test` | Files and schemas on disk |
 | Dataplane integration | `test-integration` | Dataplane accepts config; integration checks |
 | Live external proof | `datasource test-e2e` | Credentials, sync, records, CIP |
-| **Semantic trust** | **`test-trust`** | Agent metadata validation and trust decision on the dataplane |
+| **Semantic trust** | **`verify-trust`** | Agent metadata validation and trust decision on the dataplane |
 
 **Default publish gate (informative):** `notTrusted` blocks publish; `usableWithWarnings` is allowed with warnings; use **`--strict`** on the CLI to require `trusted` for exit code 0.
 
@@ -340,12 +349,12 @@ Semantic trust answers whether **business metadata** on the dataplane is fit for
 
 ```bash
 # All datasources under integration/<systemKey>/ (declaration order, same as test-e2e)
-aifabrix test-trust hubspot
-aifabrix test-trust hubspot -v --revalidate
-aifabrix test-trust hubspot --no-sync
+aifabrix verify-trust hubspot
+aifabrix verify-trust hubspot -v --revalidate
+aifabrix verify-trust hubspot --no-sync
 
 # Single datasource
-aifabrix datasource test-trust hubspot-companies --app hubspot -v
+aifabrix datasource verify-trust hubspot-companies --app hubspot -v
 ```
 
 ### Options (aligned with other test commands)
@@ -371,13 +380,13 @@ Unless **`--no-sync`** is set, the CLI **uploads local integration files** befor
 ### Recommended order
 
 1. `aifabrix test <systemKey>` — fix local structure.
-2. `aifabrix test-trust <systemKey>` — fix semantic metadata gaps cheaply.
+2. `aifabrix verify-trust <systemKey>` — fix semantic metadata gaps cheaply.
 3. `aifabrix datasource test-e2e <datasourceKey>` — prove live external behavior.
 
 ### Troubleshooting
 
-- **External system only** — `test-trust` applies to **`integration/<systemKey>/`** external apps, not generic builder apps.
-- **Confused with E2E green** — E2E success does not imply semantic trust; run **`test-trust`** when agent metadata matters.
+- **External system only** — `verify-trust` applies to **`integration/<systemKey>/`** external apps, not generic builder apps.
+- **Confused with E2E green** — E2E success does not imply semantic trust; run **`verify-trust`** when agent metadata matters.
 - **Stale dataplane config** — Omit **`--no-sync`** so local files upload first, or publish manually then use **`--no-sync`**.
 - **Strict CI failure** — Drop **`--strict`** for warning-only gates, or fix findings until decision is **`trusted`**.
 
@@ -476,7 +485,8 @@ Datasources declare **capabilities** (e.g. list, get, create, update, delete). T
 
 - [External Integration Commands](external-integration.md) – Command reference for `aifabrix test`, `aifabrix test-integration`, `aifabrix datasource test-integration`, `aifabrix datasource test-e2e`, and related commands
 - [Validation Commands](validation.md) – General validation, schemas, and `aifabrix validate`
-- [Governance testing](governance-testing.md) – `test-governance` and scenario packs
+- [Governance testing](governance-testing.md) – `verify-governance` and scenario packs
+- [Enterprise AI Certification](enterprise-ai-certification.md) – `verify-operations`, `verify-trust`, `verify-governance`, `lifecycle`
 - [Identity management](identity-management.md) – Users, groups, and dataplane identity sync before governance runs
 - [Protection](protection.md) – Protection manifests and upload before governed fixture load
 - [Permissions](permissions.md) – Scopes for test, E2E, trust, governance, and audit verification

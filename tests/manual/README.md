@@ -8,6 +8,7 @@ The **tests/manual** directory contains tests that call **real** Controller and 
 - **api-pipeline.test.js** – pipeline.api (health, validate, get deployment)
 - **api-credentials.test.js** – credentials.api (list credentials, Dataplane)
 - **api-external-systems.test.js** – external-systems.api (list, get, Dataplane)
+- **api-lifecycle.test.js** – lifecycle.api (GET system certification report; Dataplane 419.0)
 - **api-datasources.test.js** – datasources-core.api (list, executions, get, status, Dataplane)
 - **api-datasources-extended.test.js** – datasources-extended.api (records, grants, Dataplane)
 - **api-external-test-e2e.test.js** – external-test.api (test-e2e sync, getE2ETestRun; Dataplane; Bearer/API key only)

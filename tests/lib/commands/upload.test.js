@@ -58,6 +58,9 @@ jest.mock('../../../lib/utils/dataplane-pipeline-warning', () => ({
 jest.mock('../../../lib/utils/logger', () => ({
   log: jest.fn()
 }));
+jest.mock('../../../lib/lifecycle/scenario-upload', () => ({
+  uploadGovernanceScenarioPacks: jest.fn().mockResolvedValue(0)
+}));
 jest.mock('chalk', () => {
   const mock = (s) => s;
   mock.green = (s) => s;
@@ -126,7 +129,7 @@ describe('upload command', () => {
       await uploadExternalSystem(systemKey);
 
       expect(validateExternalSystemComplete).toHaveBeenCalledWith(systemKey, { type: 'external' });
-      expect(syncDeployJsonFromSources).toHaveBeenCalledWith(systemKey);
+      expect(syncDeployJsonFromSources).toHaveBeenCalledWith(systemKey, { quiet: false });
       expect(generateControllerManifest).toHaveBeenCalledWith(systemKey, { type: 'external' });
       expect(buildResolvedEnvMapForIntegration).toHaveBeenCalledWith(systemKey);
       expect(getDeploymentAuth).toHaveBeenCalled();
@@ -229,7 +232,59 @@ describe('upload command', () => {
       expect(payload.dataSources[0].configuration[0].value).toBe('secret-key');
     });
 
-    it('should log success with keys when credential secrets are pushed', async() => {
+    it('should suppress sidecar logs on minimal sync without verbose when unchanged', async() => {
+      uploadApplicationViaPipeline.mockResolvedValue({
+        success: true,
+        data: {
+          ...mockPublication,
+          uploadStatus: 'unchanged',
+          summary: 'No changes detected; publish skipped.'
+        }
+      });
+      const { uploadGovernanceScenarioPacks } = require('../../../lib/lifecycle/scenario-upload');
+      uploadGovernanceScenarioPacks.mockResolvedValue(1);
+      const { uploadExternalSystem } = require('../../../lib/commands/upload');
+      await uploadExternalSystem(systemKey, {
+        minimal: true,
+        syncMode: true,
+        silentResolve: true,
+        verbose: false
+      });
+
+      expect(uploadGovernanceScenarioPacks).toHaveBeenCalledWith(
+        systemKey,
+        expect.any(String),
+        expect.any(Object),
+        { silent: true }
+      );
+      const logs = (logger.log.mock.calls || []).map(c => c[0]).filter(s => typeof s === 'string');
+      expect(logs.some(s => s.includes('Config unchanged on dataplane'))).toBe(false);
+      expect(logs.some(s => s.includes('Governance scenario pack uploaded'))).toBe(false);
+    });
+
+    it('should skip credential push but still run sidecar follow-ups when upload returns unchanged', async() => {
+      uploadApplicationViaPipeline.mockResolvedValue({
+        success: true,
+        data: {
+          ...mockPublication,
+          uploadStatus: 'unchanged',
+          summary: 'No changes detected; publish skipped.'
+        }
+      });
+      const { uploadGovernanceScenarioPacks } = require('../../../lib/lifecycle/scenario-upload');
+      uploadGovernanceScenarioPacks.mockResolvedValue(1);
+      const { uploadExternalSystem } = require('../../../lib/commands/upload');
+      await uploadExternalSystem(systemKey);
+
+      expect(uploadApplicationViaPipeline).toHaveBeenCalled();
+      expect(pushCredentialSecrets).not.toHaveBeenCalled();
+      expect(uploadGovernanceScenarioPacks).toHaveBeenCalled();
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringContaining('Config unchanged on dataplane')
+      );
+    });
+
+    it('should run full publish follow-ups when upload returns published', async() => {
       pushCredentialSecrets.mockResolvedValue({ pushed: 2, keys: ['hubspot/clientid', 'hubspot/clientsecret'] });
       const { uploadExternalSystem } = require('../../../lib/commands/upload');
       await uploadExternalSystem(systemKey);
@@ -294,7 +349,7 @@ describe('upload command', () => {
       await uploadExternalSystem(systemKey, { dryRun: true });
 
       expect(validateExternalSystemComplete).toHaveBeenCalledWith(systemKey, { type: 'external' });
-      expect(syncDeployJsonFromSources).toHaveBeenCalledWith(systemKey);
+      expect(syncDeployJsonFromSources).toHaveBeenCalledWith(systemKey, { quiet: false });
       expect(generateControllerManifest).toHaveBeenCalledWith(systemKey, { type: 'external' });
       expect(uploadApplicationViaPipeline).not.toHaveBeenCalled();
       expect(logDataplanePipelineWarning).not.toHaveBeenCalled();

@@ -452,7 +452,7 @@ describe('External System Download Helpers Module', () => {
 
       const result = generateReadme(systemKey, application, dataSources);
 
-      expect(result).toContain('## Validate and test');
+      expect(result).toContain('## Enterprise AI Certification');
       expect(result).toContain('| Command | Network |');
       expect(result).toContain('aifabrix test hubspot');
       expect(result).toContain('aifabrix test-integration hubspot');

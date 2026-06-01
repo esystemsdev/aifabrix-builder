@@ -92,6 +92,8 @@ aifabrix upload my-hubspot --force
 - `--minimal` – Print a short readiness summary only
 - `--force` – Bypass schema replacement guards on **active** datasources and refresh the linked template credential from the secret store (shows an extra warning; prefer archive + re-upload when replacing dimension keys on an inactive system). Use after `secret set` / `repair --auth apikey` when E2E credential tests still see stale tokens.
 
+**Idempotent upload (unchanged manifest):** When local integration files match what is already published on the dataplane, the upload call completes quickly with `uploadStatus: unchanged` and **does not** republish (no MCP regeneration, credential push, OpenAPI file sync, governance scenario upload, or certification sync on the CLI side). Use `--force` when you need a full republish anyway—for example after rotating secrets outside the manifest or to refresh MCP/OpenAPI artifacts. Commands that sync before a run (`verify-operations`, `verify-trust`, `verify-governance`, `test-e2e`, `test-integration`, `lifecycle --run`, and similar) benefit automatically because they all use the same upload path.
+
 ---
 
 <a id="aifabrix-credential-env-system-key"></a>
@@ -176,5 +178,20 @@ aifabrix test-integration hubspot
 aifabrix test-integration hubspot --env tst
 aifabrix test-integration hubspot -v
 aifabrix test-integration hubspot --debug
+```
+
+---
+
+## Enterprise AI Certification
+
+Certification commands (`verify-operations`, `verify-trust`, `verify-governance`, `lifecycle`) use a **shared flag convention**: `-e`, `-v`, `-d`, `--no-sync`, `--force`, `--json`. See **[Enterprise AI Certification](enterprise-ai-certification.md)** for the full ladder, options, and troubleshooting.
+
+**Quick reference — `lifecycle`:**
+
+```bash
+aifabrix lifecycle hubspot          # report only
+aifabrix lifecycle hubspot -v       # report + per-datasource breakdown
+aifabrix lifecycle hubspot --run    # sync + run missing verify steps + report
+aifabrix lifecycle hubspot --run --no-sync -v
 ```
 

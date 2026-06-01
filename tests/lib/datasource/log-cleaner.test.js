@@ -56,7 +56,8 @@ describe('log-cleaner', () => {
 
     it('e2e matches only test-e2e prefix', () => {
       expect(matchesLogCleanType('test-e2e-ds.json', 'e2e')).toBe(true);
-      expect(matchesLogCleanType('test-trust-ds.json', 'e2e')).toBe(false);
+      expect(matchesLogCleanType('verify-trust-ds.json', 'e2e')).toBe(false);
+      expect(matchesLogCleanType('verify-trust-ds.json', 'trust')).toBe(true);
     });
   });
 
